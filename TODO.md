@@ -3,7 +3,7 @@ TODO List
 
 # Code
 
-- [ ] Ovnis' lifepoints
+- [x] Ovnis' lifepoints
 - [ ] Energy
 - [ ] Asteroïds, Blackholes, Pirates
 - [ ] Background image scrolling

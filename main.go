@@ -117,7 +117,10 @@ func run() {
 			body:     pixel.R(200, 300, 300, 200),
 			velocity: pixel.ZV,
 		},
-		mode: shootLaser,
+		mode:   shootLaser,
+		energy: .5,
+		food:   0.5,
+		scrap:  0.5,
 	}
 
 	var ovnis []*Ovni

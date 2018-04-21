@@ -13,6 +13,9 @@ type shootMode int
 const (
 	shootLaser   = 0
 	shootBullets = 1
+
+	laserCost  = .2
+	bulletCost = .05
 )
 
 // Bullet is a single bullet the player can shoot
@@ -22,11 +25,17 @@ type Bullet struct {
 
 // Player represents the player
 type Player struct {
-	rigidBody *RigidBody
-	mode      shootMode
-	counter   float64
+	// Shoot them up data
+	rigidBody     *RigidBody
+	mode          shootMode
+	counter       float64
+	hasShootLaser bool
 
 	bullets []*Bullet
+
+	energy float64
+	food   float64
+	scrap  float64
 }
 
 func (p *Player) physics(dt float64) {
@@ -55,7 +64,9 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 	}
 
 	if space > 0 {
-		if p.mode == shootLaser {
+		if p.mode == shootLaser && p.energy-laserCost > 0 {
+			p.energy -= laserCost
+			p.hasShootLaser = true
 			x := (p.rigidBody.body.Min.X + p.rigidBody.body.Max.X) / 2
 			rect := pixel.R(x, p.rigidBody.body.Min.Y, x+20, height)
 			for _, o := range ovnis {
@@ -63,7 +74,8 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 					o.loseLife(10)
 				}
 			}
-		} else if p.mode == shootBullets && space%5 == 0 {
+		} else if p.mode == shootBullets && space%5 == 0 && p.energy-bulletCost > 0 {
+			p.energy -= bulletCost
 			p.bullets = append(p.bullets, &Bullet{
 				rigidBody: NewRigidBodyBySize(p.rigidBody.body.Center().X,
 					p.rigidBody.body.Center().Y,
@@ -72,6 +84,8 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 				),
 			})
 		}
+	} else if p.hasShootLaser {
+		p.hasShootLaser = false
 	}
 
 	if tab == 1 {
@@ -140,15 +154,22 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 		p.rigidBody.velocity.Y = 0
 	}
 
+	// Simulation
+	p.energy += 0.001
+	if p.energy > 1 {
+		p.energy = 1
+	}
+
 	return ovnis
 }
 
 func (p *Player) draw(imag *imdraw.IMDraw) {
+	// Shoot them up
 	imag.Color = colornames.Red
 	p.rigidBody.draw(imag)
 
 	imag.Color = colornames.Chartreuse
-	if space > 0 && p.mode == shootLaser {
+	if p.hasShootLaser {
 		x := (p.rigidBody.body.Min.X + p.rigidBody.body.Max.X) / 2
 		imag.Push(pixel.V(x, height))
 		imag.Push(pixel.V(x+20, p.rigidBody.body.Min.Y))
@@ -158,4 +179,43 @@ func (p *Player) draw(imag *imdraw.IMDraw) {
 	for _, b := range p.bullets {
 		b.rigidBody.draw(imag)
 	}
+
+	// Simulation
+	gap := 10.0
+	h := 20.0
+	dx := width * 0.1
+	x := width/2 + 20
+	x2 := x + dx
+
+	// TODO: can optimize here
+	imag.Color = colornames.Black
+	imag.Push(pixel.V(x, height-gap))
+	imag.Push(pixel.V(x2, height-gap-h))
+	imag.Rectangle(0)
+
+	imag.Color = colornames.Gold
+	imag.Push(pixel.V(x, height-gap))
+	imag.Push(pixel.V(x+dx*p.energy, height-gap-h))
+	imag.Rectangle(0)
+
+	imag.Color = colornames.Black
+	imag.Push(pixel.V(x, height-2*gap-h))
+	imag.Push(pixel.V(x2, height-2*gap-2*h))
+	imag.Rectangle(0)
+
+	imag.Color = colornames.Green
+	imag.Push(pixel.V(x, height-2*gap-h))
+	imag.Push(pixel.V(x+dx*p.food, height-2*gap-2*h))
+	imag.Rectangle(0)
+
+	imag.Color = colornames.Black
+	imag.Push(pixel.V(x, height-3*gap-2*h))
+	imag.Push(pixel.V(x2, height-3*gap-3*h))
+	imag.Rectangle(0)
+
+	imag.Color = colornames.Darkgray
+	imag.Push(pixel.V(x, height-3*gap-2*h))
+	imag.Push(pixel.V(x+dx*p.scrap, height-3*gap-3*h))
+	imag.Rectangle(0)
+
 }
