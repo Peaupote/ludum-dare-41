@@ -34,7 +34,7 @@ He must be able to grab items
 Those items may appear if the player kill an ennemi and if he break background elements (if i have enough time to implement it)
 
 ### Body simulation
-The men is a cyborg so if we play the cyborg we also have manage his body.
+The men is a cyborg so if we play the cyborg we also have manage his body. The software is a very good one and offer a medival interface to make things easier to understand.
 
 Organs:
 
@@ -53,3 +53,5 @@ Action:
 * Can increase heartbeat to boost the player but traide some heart's life.
 * Can increase respiration to get more oxygen but traide some lungs' life.
 * Can buy upgrades for the muscles against nutriments.
+
+The heart is an hospital on the center, lungs are mills and muscles are houses. Ressources are representing by peoples walking along the street.
