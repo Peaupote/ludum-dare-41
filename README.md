@@ -1,57 +1,59 @@
 Ludum Dare 41
 =============
 
-## Theme: Combine 2 Incompatible Genres
-
-I thought of a making a 2-game in one. And the two games would be interacting.
-The first game is a classic beat the up: you must go throught the level without dying. The second game is a simulation game: you'r inside the player's body and have to take care about his health while he is fighting.
+Theme: Combine 2 Incompatible Genres
+------------------------------------
 
 Win condition:
 
-* reach the end of the level alive.
+* Build a top-tier building.
 
 Lose condition:
 
-* One vital organ break down.
+* The spaceship die.
 
-### Controls
-To differentiate the 2 games let's say that the beat the up require only keyboard controls and the body simulation only mouse controls.
+Controls
+--------
 
-### Beat them up
-This is a classic beat them up, ennemies comming from the right and the player comming from the left. With a horizontal scrolling centered on the player.
+To differentiate the 2 games let's say that the shoot them up requires only keyboard controls and the body simulation only mouse controls.
 
-He can
+The shoot them up
+-----------------
 
-* Go left, right, jump, get down
-* Hit when he's not jumping
+On the left side of the screen you control the spaceship travelling throught intergallatic space.
 
-He must be able to grab items
+You must avoid
 
-* food
-* weapons ? I'm not sure about that because it doesn't involve the simulation
-* pills
+* damages from meteorites.
+* blakholes and suns.
+* pirates attacks.
 
-Those items may appear if the player kill an ennemi and if he break background elements (if i have enough time to implement it)
+You have 2 types of shooting
 
-### Body simulation
-The men is a cyborg so if we play the cyborg we also have manage his body. The software is a very good one and offer a medival interface to make things easier to understand.
+* big laser: single direction, verypowerful, expensive in energy
+* turrets: fire lots of bullets in spiral but not very powerful
 
-Organs:
+Life inside the ship
+--------------------
 
-* Heart provide blood pressure so oxygen could go faster to the muscles. He need neither oxygen nor nutriments. The only way to heal the heart is to find pills.
-* Lungs provide oxygen to the body. Lungs provide more oxygen if they are in good health.
-* Muscles (legs and arms) requires a certain amount of oxygen to stay effective. If they stay to long without enough oxygen the player will die.
+This is a classic real-time simulation game.
 
 Ressources:
 
-* Blood pressure (provided by heart)
-* Nutriments (provided by food)
-* Oxygens (provided by lungs)
+* energy (shared with the spaceship)
+* food
+* mechanical components (you can build those or the ship can find some in the space)
 
-Action:
+Technological tree:
 
-* Can increase heartbeat to boost the player but traide some heart's life.
-* Can increase respiration to get more oxygen but traide some lungs' life.
-* Can buy upgrades for the muscles against nutriments.
+* Tiers 0:
+  * Center: main building, produce more pioneer
+  * House: needed to extends the supply limit.
+  * Cantina: peoples go there to produce food
+* Tiers 1:
+  * In-progress
 
-The heart is an hospital on the center, lungs are mills and muscles are houses. Ressources are representing by peoples walking along the street.
+If the ship
+
+* lose to much life at once it randomly damage buildings
+* go to fast, peoples in the ship fall and slip: they randomly dies
