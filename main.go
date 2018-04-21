@@ -1,7 +1,11 @@
 package main
 
 import (
+	"image"
+	"os"
 	"time"
+
+	_ "image/png"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
@@ -22,6 +26,13 @@ var (
 	space  = 0
 	enter  = 0
 	tab    = 0
+
+	pressed       = false
+	mouseStart    pixel.Vec
+	mousePosition pixel.Vec
+
+	leftSide  pixel.Rect
+	rightSide pixel.Rect
 
 	width  float64
 	height float64
@@ -85,6 +96,21 @@ func applyControls(win *pixelgl.Window) {
 	if win.Pressed(pixelgl.KeyTab) {
 		tab++
 	}
+
+	//
+
+	if win.JustPressed(pixelgl.MouseButtonLeft) {
+		pressed = true
+		mouseStart = win.MousePosition()
+	}
+
+	if win.Pressed(pixelgl.MouseButtonLeft) {
+		mousePosition = win.MousePosition()
+	}
+
+	if win.JustReleased(pixelgl.MouseButtonLeft) {
+		pressed = false
+	}
 }
 
 func middleBar(imd *imdraw.IMDraw) {
@@ -95,6 +121,21 @@ func middleBar(imd *imdraw.IMDraw) {
 	imd.Push(pixel.V(x, height))
 	imd.Push(pixel.V(x+10, 0))
 	imd.Rectangle(0)
+}
+
+func loadPicture(path string) (pixel.Picture, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return pixel.PictureDataFromImage(img), nil
 }
 
 func run() {
@@ -123,7 +164,23 @@ func run() {
 		scrap:  0.5,
 	}
 
+	spaceBackground, err := loadPicture("./assets/space-bkg.png")
+	if err != nil {
+		panic(err)
+	}
+
+	sprite := pixel.NewSprite(spaceBackground, spaceBackground.Bounds())
+
 	var ovnis []*Ovni
+
+	vils := []*Villager{&Villager{
+		rigidBody: NewRigidBodyBySize(defaultWidth/2+100, 100, 50, 50, pixel.ZV),
+	}}
+
+	m := &Map{
+		villagers: vils,
+		buildings: nil,
+	}
 
 	for !win.Closed() {
 		if win.JustPressed(pixelgl.KeyEscape) {
@@ -138,17 +195,27 @@ func run() {
 		// update
 		ovnis = updateUniverse(dt, ovnis)
 		ovnis = player.upadte(dt, ovnis)
+		m.update(dt)
 
 		win.Clear(colornames.Skyblue)
 		imd.Clear()
 
 		width = win.Bounds().W()
 		height = win.Bounds().H()
+
+		// TODO: clean up here
+		leftSide = pixel.R(0, 0, width/2, height)
+		rightSide = pixel.R(width/2, 0, width, height)
+		sprite.Draw(win, pixel.IM.
+			Moved(leftSide.Center()).
+			ScaledXY(leftSide.Center(), pixel.V(width/(2*spaceBackground.Bounds().W()), 1)))
 		middleBar(imd)
 
 		for _, o := range ovnis {
 			o.draw(imd)
 		}
+
+		m.draw(imd)
 		player.draw(imd)
 		imd.Draw(win)
 
