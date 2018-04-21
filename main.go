@@ -10,7 +10,9 @@ import (
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
+	"github.com/faiface/pixel/text"
 	"golang.org/x/image/colornames"
+	"golang.org/x/image/font/basicfont"
 )
 
 const (
@@ -27,12 +29,16 @@ var (
 	enter  = 0
 	tab    = 0
 
-	pressed       = false
+	rightPressed  = 0
+	pressed       = 0
 	mouseStart    pixel.Vec
 	mousePosition pixel.Vec
+	mouseLocation pixel.Vec
 
 	leftSide  pixel.Rect
 	rightSide pixel.Rect
+
+	uiFont = text.NewAtlas(basicfont.Face7x13, text.ASCII)
 
 	width  float64
 	height float64
@@ -99,9 +105,14 @@ func applyControls(win *pixelgl.Window) {
 
 	//
 
+	mouseLocation = win.MousePosition()
+
 	if win.JustPressed(pixelgl.MouseButtonLeft) {
-		pressed = true
 		mouseStart = win.MousePosition()
+	}
+
+	if win.Pressed(pixelgl.MouseButtonLeft) {
+		pressed++
 	}
 
 	if win.Pressed(pixelgl.MouseButtonLeft) {
@@ -109,7 +120,15 @@ func applyControls(win *pixelgl.Window) {
 	}
 
 	if win.JustReleased(pixelgl.MouseButtonLeft) {
-		pressed = false
+		pressed = 0
+	}
+
+	if win.Pressed(pixelgl.MouseButtonRight) {
+		rightPressed++
+	}
+
+	if win.JustReleased(pixelgl.MouseButtonRight) {
+		rightPressed = 0
 	}
 }
 

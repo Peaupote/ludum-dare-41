@@ -59,8 +59,12 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 		p.rigidBody.velocity.Y -= moveSpeed
 	}
 
-	if enter > 0 {
-		p.rigidBody.velocity = pixel.ZV
+	if enter > 0 && p.energy > .01 {
+		dt /= 3
+		p.energy -= .01
+		if p.energy < 0 {
+			p.energy = 0
+		}
 	}
 
 	if space > 0 {
