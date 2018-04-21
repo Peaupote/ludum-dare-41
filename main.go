@@ -120,7 +120,7 @@ func run() {
 		mode: shootLaser,
 	}
 
-	var ovnis []Ovni
+	var ovnis []*Ovni
 
 	for !win.Closed() {
 		if win.JustPressed(pixelgl.KeyEscape) {

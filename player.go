@@ -33,7 +33,7 @@ func (p *Player) physics(dt float64) {
 	p.rigidBody.physics(dt)
 }
 
-func (p *Player) upadte(dt float64, ovnis []Ovni) []Ovni {
+func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 	if top > 0 {
 		p.rigidBody.velocity.Y += moveSpeed
 	}
@@ -58,13 +58,11 @@ func (p *Player) upadte(dt float64, ovnis []Ovni) []Ovni {
 		if p.mode == shootLaser {
 			x := (p.rigidBody.body.Min.X + p.rigidBody.body.Max.X) / 2
 			rect := pixel.R(x, p.rigidBody.body.Min.Y, x+20, height)
-			var os []Ovni
 			for _, o := range ovnis {
-				if !o.getRigidBody().hit(rect) {
-					os = append(os, o)
+				if o.rigidBody.hit(rect) {
+					o.loseLife(10)
 				}
 			}
-			ovnis = os
 		} else if p.mode == shootBullets && space%5 == 0 {
 			p.bullets = append(p.bullets, &Bullet{
 				rigidBody: NewRigidBodyBySize(p.rigidBody.body.Center().X,
@@ -96,21 +94,27 @@ func (p *Player) upadte(dt float64, ovnis []Ovni) []Ovni {
 			r.body.Max.X > 0 &&
 			r.body.Max.Y > 0 {
 
-			var os []Ovni
 			hitted := false
 			for _, o := range ovnis {
-				if !o.getRigidBody().hit(b.rigidBody.body) {
-					os = append(os, o)
-				} else {
+				if o.rigidBody.hit(b.rigidBody.body) {
+					o.loseLife(5)
 					hitted = true
 				}
 			}
-			ovnis = os
 			if !hitted {
 				bullets = append(bullets, b)
 			}
 		}
 	}
+
+	var os []*Ovni
+	for _, o := range ovnis {
+		if o.isAlive() {
+			os = append(os, o)
+		}
+	}
+
+	ovnis = os
 
 	p.bullets = bullets
 

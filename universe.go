@@ -8,27 +8,39 @@ import (
 	"golang.org/x/image/colornames"
 )
 
-type Ovni interface {
-	getRigidBody() *RigidBody
-	draw(*imdraw.IMDraw)
-}
+const (
+	asteroid = 0
+)
 
-type Asteroid struct {
+type kindOfOvni int
+
+type Ovni struct {
 	rigidBody *RigidBody
+	life      int
+	kind      kindOfOvni
 }
 
-func (a Asteroid) getRigidBody() *RigidBody {
-	return a.rigidBody
-}
-
-func (a Asteroid) draw(imag *imdraw.IMDraw) {
+func (o *Ovni) draw(imag *imdraw.IMDraw) {
 	imag.Color = colornames.Brown
-	a.rigidBody.draw(imag)
+	o.rigidBody.draw(imag)
 }
 
-func updateUniverse(dt float64, ovnis []Ovni) []Ovni {
+func (o *Ovni) loseLife(life int) {
+	life = o.life - life
+	if life < 0 {
+		o.life = 0
+	} else {
+		o.life = life
+	}
+}
+
+func (o *Ovni) isAlive() bool {
+	return o.life > 0
+}
+
+func updateUniverse(dt float64, ovnis []*Ovni) []*Ovni {
 	for i, o := range ovnis {
-		r := o.getRigidBody()
+		r := o.rigidBody
 		r.physics(dt)
 		if r.body.Max.Y < 0 {
 			ovnis[i] = ovnis[len(ovnis)-1]
@@ -38,13 +50,15 @@ func updateUniverse(dt float64, ovnis []Ovni) []Ovni {
 
 	// TODO: less "random" random generation
 	if rand.Intn(100) == 1 {
-		ovnis = append(ovnis, Asteroid{
+		ovnis = append(ovnis, &Ovni{
 			rigidBody: NewRigidBodyBySize(
 				rand.Float64()*(width/2),
 				height+10,
 				50.0, 50.0,
 				pixel.V(0, -100),
 			),
+			life: rand.Intn(10) + 5,
+			kind: asteroid,
 		})
 	}
 
