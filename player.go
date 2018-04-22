@@ -171,7 +171,7 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 					10*alpha,
 					pixel.V(0, -50*alpha),
 				),
-				value: (alpha - 1) / 4,
+				value: (alpha - 1) / 6,
 			})
 		}
 

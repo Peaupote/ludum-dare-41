@@ -43,13 +43,15 @@ const (
 	repair  = 3
 
 	houseHalfSize = 30
-	houseCost     = .05
+	houseCost     = .15
 
 	cantinaRad  = 40
 	cantinaCost = .2
 
 	labHalfSize = 50
 	labCost     = .5
+
+	popToWin = 10
 )
 
 type Building struct {
@@ -58,8 +60,6 @@ type Building struct {
 	life       float64
 	creating   bool
 	buildSince int
-
-	data int
 
 	sheet   pixel.Picture
 	anims   map[string][]pixel.Rect
@@ -138,7 +138,6 @@ func createBuilding(k kindOfBuildings, p pixel.Rect) *Building {
 		position: p,
 		creating: true,
 		life:     5,
-		data:     0,
 
 		sheet: sheet,
 		anims: anims,
@@ -357,17 +356,18 @@ func (m *Map) update(dt float64, p *Player) {
 		if !b.creating {
 			switch b.kind {
 			case cantina:
-				p.food += 0.01
+				p.food += foodSupply * 10
 				if p.food >= 1 {
 					p.food = 1
 				}
 			case house:
-				if (t+b.buildSince)%250 == 0 && len(m.villagers) < m.houseCount*5 {
-					if b.data < 5 {
-						m.villagers = append(m.villagers, NewVillager(
-							b.position.Center().X+rand.Float64()*houseHalfSize,
-							b.position.Center().Y+rand.Float64()*houseHalfSize))
-						b.data++
+				if (t+b.buildSince)%300 == 0 && len(m.villagers) < m.houseCount*5 && p.food-0.05 > 0 {
+					m.villagers = append(m.villagers, NewVillager(
+						b.position.Center().X+rand.Float64()*houseHalfSize,
+						b.position.Center().Y+rand.Float64()*houseHalfSize))
+					p.food -= 0.05
+					if p.food < 0 {
+						p.food = 0
 					}
 				}
 			case lab:
@@ -417,10 +417,11 @@ func (m *Map) update(dt float64, p *Player) {
 	if p.food <= 0 {
 		p.food = 0
 
-		if t%200 == 0 {
+		if t%500 == 0 {
 			var survivingVillager []*Villager
+			r := rand.Intn(len(m.villagers))
 			for i, v := range m.villagers {
-				if i+1 == rand.Intn(len(m.villagers)) {
+				if i+1 != r {
 					survivingVillager = append(survivingVillager, v)
 				}
 			}
@@ -429,7 +430,7 @@ func (m *Map) update(dt float64, p *Player) {
 		}
 	}
 
-	if len(m.villagers) == 0 || len(m.villagers) >= 100 {
+	if len(m.villagers) == 0 || len(m.villagers) >= popToWin {
 		// end game
 		screen = endScreen
 	}
