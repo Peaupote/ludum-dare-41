@@ -11,14 +11,10 @@ import (
 const (
 	pauseMode     = 0
 	asteroidField = 1
-	piratesAttack = 2
-
-	asteroid = 0
-	pirates  = 1
 )
 
 var (
-	genMode    = piratesAttack
+	genMode    = asteroidField
 	genCounter = 0
 )
 
@@ -27,7 +23,6 @@ type kindOfOvni int
 type Ovni struct {
 	rigidBody *RigidBody
 	life      int
-	kind      kindOfOvni
 }
 
 func (o *Ovni) draw(imag *imdraw.IMDraw) {
@@ -36,11 +31,9 @@ func (o *Ovni) draw(imag *imdraw.IMDraw) {
 }
 
 func (o *Ovni) loseLife(life int) {
-	life = o.life - life
+	o.life -= life
 	if life < 0 {
 		o.life = 0
-	} else {
-		o.life = life
 	}
 }
 
@@ -49,14 +42,16 @@ func (o *Ovni) isAlive() bool {
 }
 
 func updateUniverse(dt float64, ovnis []*Ovni) []*Ovni {
-	for i, o := range ovnis {
+	var os []*Ovni
+	for _, o := range ovnis {
 		r := o.rigidBody
 		r.physics(dt)
-		if r.body.Max.Y < 0 {
-			ovnis[i] = ovnis[len(ovnis)-1]
-			ovnis = ovnis[:len(ovnis)-1]
+		if r.body.Max.Y > 0 {
+			os = append(os, o)
 		}
 	}
+
+	ovnis = os
 
 	if genCounter%1000 == 0 {
 		genMode = (genMode + 1) % 3
@@ -68,8 +63,6 @@ func updateUniverse(dt float64, ovnis []*Ovni) []*Ovni {
 	switch genMode {
 	case asteroidField:
 		ovnis = genAsteroids(ovnis)
-	case piratesAttack:
-		ovnis = genPirates(ovnis)
 	}
 
 	return ovnis
@@ -88,12 +81,7 @@ func genAsteroids(ovnis []*Ovni) []*Ovni {
 				pixel.V(0, -100*alpha),
 			),
 			life: int(2 * alpha),
-			kind: asteroid,
 		})
 	}
-	return ovnis
-}
-
-func genPirates(ovnis []*Ovni) []*Ovni {
 	return ovnis
 }

@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	moveSpeed = 50
+	moveSpeed = 10
 )
 
 // RigidBody represents any physical beeing

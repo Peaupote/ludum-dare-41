@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/csv"
 	"image"
+	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"image/color"
@@ -12,6 +15,7 @@ import (
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/faiface/pixel/text"
+	"github.com/pkg/errors"
 	"golang.org/x/image/colornames"
 	"golang.org/x/image/font/basicfont"
 )
@@ -54,7 +58,8 @@ var (
 	height float64
 	t      int
 
-	canvas *pixelgl.Canvas
+	canvas    *pixelgl.Canvas
+	topCanvas *pixelgl.Canvas
 
 	player          *Player
 	m               *Map
@@ -62,6 +67,66 @@ var (
 	sprite          *pixel.Sprite
 	spaceBackground pixel.Picture
 )
+
+func loadAnimationSheet(sheetPath, descPath string, frameWidth float64) (sheet pixel.Picture, anims map[string][]pixel.Rect, err error) {
+	// total hack, nicely format the error at the end, so I don't have to type it every time
+	defer func() {
+		if err != nil {
+			err = errors.Wrap(err, "error loading animation sheet")
+		}
+	}()
+
+	// open and load the spritesheet
+	sheetFile, err := os.Open(sheetPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer sheetFile.Close()
+	sheetImg, _, err := image.Decode(sheetFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	sheet = pixel.PictureDataFromImage(sheetImg)
+
+	// create a slice of frames inside the spritesheet
+	var frames []pixel.Rect
+	for x := 0.0; x+frameWidth <= sheet.Bounds().Max.X; x += frameWidth {
+		frames = append(frames, pixel.R(
+			x,
+			0,
+			x+frameWidth,
+			sheet.Bounds().H(),
+		))
+	}
+
+	descFile, err := os.Open(descPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer descFile.Close()
+
+	anims = make(map[string][]pixel.Rect)
+
+	// load the animation information, name and interval inside the spritesheet
+	desc := csv.NewReader(descFile)
+	for {
+		anim, err := desc.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+
+		name := anim[0]
+		start, _ := strconv.Atoi(anim[1])
+		end, _ := strconv.Atoi(anim[2])
+
+		anims[name] = frames[start : end+1]
+	}
+
+	return sheet, anims, nil
+}
 
 func applyControls(win *pixelgl.Window) {
 	if win.JustReleased(pixelgl.KeyLeft) {
@@ -201,6 +266,8 @@ func run() {
 	t = 0
 
 	canvas = pixelgl.NewCanvas(win.Bounds())
+	topCanvas = pixelgl.NewCanvas(win.Bounds())
+	frameCanvas := pixelgl.NewCanvas(win.Bounds())
 
 	win.SetSmooth(true)
 
@@ -224,6 +291,8 @@ func run() {
 			endUpdate(dt, win, imd)
 		}
 
+		topCanvas.Clear(color.RGBA{0, 0, 0, 0})
+		frameCanvas.Clear(color.RGBA{0, 0, 0, 0})
 		canvas.Clear(color.RGBA{0, 0, 0, 0})
 		win.Clear(colornames.Skyblue)
 		imd.Clear()
@@ -241,22 +310,33 @@ func run() {
 			endRender(dt, win, imd)
 		}
 
-		imd.Draw(win)
-		canvas.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+		canvas.Draw(frameCanvas, pixel.IM.Moved(win.Bounds().Center()))
+		imd.Draw(frameCanvas)
+		topCanvas.Draw(frameCanvas, pixel.IM.Moved(win.Bounds().Center()))
+		frameCanvas.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
 		win.Update()
 	}
 }
 
 func startGame() {
+	sheet, anims, err := loadAnimationSheet("./assets/ship.png", "./assets/ship.csv", 30)
+	if err != nil {
+		panic(err)
+	}
+
 	player = &Player{
 		rigidBody: &RigidBody{
-			body:     pixel.R(200, 300, 300, 200),
+			body:     pixel.R(200, 200, 260, 300),
 			velocity: pixel.ZV,
 		},
 		mode:   shootLaser,
-		energy: .5,
-		food:   0.5,
-		scrap:  0.5,
+		energy: 1,
+		food:   1,
+		scrap:  1,
+
+		sheet: sheet,
+		anims: anims,
+		rate:  1.0 / 10,
 	}
 
 	sp, err := loadPicture("./assets/space-bkg.png")
@@ -268,9 +348,17 @@ func startGame() {
 
 	sprite = pixel.NewSprite(spaceBackground, spaceBackground.Bounds())
 
-	vils := []*Villager{&Villager{
-		rigidBody: NewRigidBodyBySize(defaultWidth/2+100, 100, 10, 10, pixel.ZV),
-	}}
+	vils := []*Villager{NewVillager(defaultWidth/2+100, 100)}
+	bils := []*Building{
+		createBuilding(cantina, pixel.R(642, 69, 722, 149)),
+		createBuilding(house, pixel.R(592, 177, 652, 237)),
+	}
+
+	bils[0].creating = false
+	bils[0].life = 100.0
+
+	bils[1].creating = false
+	bils[1].life = 100.0
 
 	ovnis = []*Ovni{}
 	landing = -1
@@ -278,7 +366,7 @@ func startGame() {
 
 	m = &Map{
 		villagers: vils,
-		buildings: nil,
+		buildings: bils,
 	}
 }
 

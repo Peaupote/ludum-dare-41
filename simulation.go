@@ -55,31 +55,94 @@ const (
 type Building struct {
 	kind       kindOfBuildings
 	position   pixel.Rect
-	life       int
+	life       float64
 	creating   bool
 	buildSince int
 
 	data int
+
+	sheet   pixel.Picture
+	anims   map[string][]pixel.Rect
+	rate    float64
+	counter float64
+	index   int
+
+	frame pixel.Rect
+
+	sprite *pixel.Sprite
 }
 
 type Villager struct {
 	rigidBody *RigidBody
 	target    *Building
 	selected  bool
+
+	sheet   pixel.Picture
+	anims   map[string][]pixel.Rect
+	rate    float64
+	counter float64
+	index   int
+
+	frame pixel.Rect
+
+	sprite *pixel.Sprite
+}
+
+func NewVillager(x, y float64) *Villager {
+	sheet, anims, err := loadAnimationSheet("./assets/villager.png", "./assets/villager.csv", 10)
+	if err != nil {
+		panic(err)
+	}
+
+	return &Villager{
+		rigidBody: NewRigidBodyBySize(x, y, 10, 10, pixel.ZV),
+		sheet:     sheet,
+		anims:     anims,
+		rate:      1.0 / 10,
+	}
 }
 
 func (v *Villager) draw(imag *imdraw.IMDraw) {
-	imag.Color = colornames.Blue
-	v.rigidBody.draw(imag)
+	if v.sprite == nil {
+		v.sprite = pixel.NewSprite(nil, pixel.Rect{})
+	}
+
+	v.sprite.Set(v.sheet, v.frame)
+	v.sprite.Draw(canvas, pixel.IM.
+		Moved(v.rigidBody.body.Center()).
+		Scaled(v.rigidBody.body.Center(), 2))
 }
 
 func createBuilding(k kindOfBuildings, p pixel.Rect) *Building {
+	var sheet pixel.Picture
+	var anims map[string][]pixel.Rect
+	switch k {
+	case house:
+		s, a, err := loadAnimationSheet("./assets/house.png", "./assets/building.csv", 60)
+		if err != nil {
+			panic(err)
+		}
+		sheet = s
+		anims = a
+	case lab:
+		s, a, err := loadAnimationSheet("./assets/lab.png", "./assets/lab.csv", 100)
+		if err != nil {
+			panic(err)
+		}
+		sheet = s
+		anims = a
+	}
+
 	return &Building{
 		kind:     k,
 		position: p,
 		creating: true,
 		life:     5,
 		data:     0,
+
+		sheet: sheet,
+		anims: anims,
+		rate:  1.0 / 10,
 	}
 }
 
@@ -93,26 +156,14 @@ func (m *Map) setTargetForSelectedVillagers(b *Building) {
 
 func (b *Building) draw(imd *imdraw.IMDraw) {
 	switch b.kind {
-	case house:
-		if b.creating {
-			imd.Color = colornames.Darkkhaki
-		} else {
-			imd.Color = colornames.Brown
+	case house, lab:
+		if b.sprite == nil {
+			b.sprite = pixel.NewSprite(nil, pixel.Rect{})
 		}
 
-		imd.Push(b.position.Min)
-		imd.Push(b.position.Max)
-		imd.Rectangle(0)
-	case lab:
-		if b.creating {
-			imd.Color = colornames.Chocolate
-		} else {
-			imd.Color = colornames.Darkorchid
-		}
-
-		imd.Push(b.position.Min)
-		imd.Push(b.position.Max)
-		imd.Rectangle(0)
+		b.sprite.Set(b.sheet, b.frame)
+		b.sprite.Draw(canvas, pixel.IM.
+			Moved(b.position.Center()))
 	case cantina:
 		if b.creating {
 			imd.Color = colornames.Greenyellow
@@ -220,42 +271,23 @@ func (m *Map) update(dt float64, p *Player) {
 				})
 			}
 			landing = -1
+			m.clearSelected()
 		}
 	}
 
 	for _, v := range m.villagers {
 		p.food -= foodSupply
 
+		v.counter++
+		if v.counter > 20 {
+			v.index = 1 - v.index
+			v.counter = 0
+		}
+		v.frame = v.anims["Idle"][v.index]
+
 		// TODO: add inerty
 		v.rigidBody.velocity = v.rigidBody.velocity.
-			Add(p.rigidBody.velocity).
-			Scaled(.1)
-
-		if v.target != nil && v.target.life == 0 {
-			v.target = nil
-		}
-
-		if v.target != nil {
-			v.rigidBody.velocity = v.rigidBody.velocity.
-				Add(v.target.position.Center().
-					Add(v.rigidBody.body.Center().Scaled(-1)).
-					Scaled(villagerSpeed * dt))
-
-			if v.rigidBody.body.Intersect(v.target.position).Area() == v.rigidBody.body.Area() {
-				v.rigidBody.velocity = pixel.ZV
-				v.target.life++
-
-				if v.target.life >= 100 {
-					v.target.life = 100
-					v.target.creating = false
-					if v.target.kind == house {
-						m.houseCount++
-					}
-					v.target.buildSince = t
-					v.target = nil
-				}
-			}
-		}
+			Add(p.rigidBody.velocity).Scaled(.5)
 
 		half := width/2 + 20
 		if v.rigidBody.body.Min.X < half {
@@ -273,10 +305,37 @@ func (m *Map) update(dt float64, p *Player) {
 			v.rigidBody.velocity.Y = 0
 		}
 
-		if v.rigidBody.body.Min.Y > height {
-			v.rigidBody.body = v.rigidBody.body.Moved(pixel.V(height-v.rigidBody.body.Min.Y, 0))
+		if v.rigidBody.body.Max.Y > height {
+			v.rigidBody.body = v.rigidBody.body.Moved(pixel.V(height-v.rigidBody.body.Max.Y, 0))
 			v.rigidBody.velocity.Y = 0
 		}
+
+		if v.target != nil && v.target.life == 0 {
+			v.target = nil
+		}
+
+		if v.target != nil {
+			v.rigidBody.velocity = v.rigidBody.velocity.
+				Add(v.target.position.Center().
+					Add(v.rigidBody.body.Center().Scaled(-1)).
+					Scaled(villagerSpeed * dt))
+
+			if v.rigidBody.body.Intersect(v.target.position).Area() == v.rigidBody.body.Area() {
+				v.rigidBody.velocity = pixel.ZV
+				v.target.life += .5
+
+				if v.target.life >= 100 {
+					v.target.life = 100
+					v.target.creating = false
+					if v.target.kind == house {
+						m.houseCount++
+					}
+					v.target.buildSince = t
+					v.target = nil
+				}
+			}
+		}
+
 		v.rigidBody.physics(dt)
 	}
 
@@ -293,15 +352,14 @@ func (m *Map) update(dt float64, p *Player) {
 			case house:
 				if (t+b.buildSince)%250 == 0 && len(m.villagers) < m.houseCount*5 {
 					if b.data < 5 {
-						m.villagers = append(m.villagers, &Villager{
-							rigidBody: NewRigidBodyBySize(b.position.Center().X+rand.Float64()*houseHalfSize,
-								b.position.Center().Y+rand.Float64()*houseHalfSize, 10, 10, pixel.ZV),
-						})
+						m.villagers = append(m.villagers, NewVillager(
+							b.position.Center().X+rand.Float64()*houseHalfSize,
+							b.position.Center().Y+rand.Float64()*houseHalfSize))
 						b.data++
 					}
 				}
 			case lab:
-				p.energy += 0.005
+				p.energy += 0.0005
 				if p.energy >= 1 {
 					p.energy = 1
 				}
@@ -309,7 +367,7 @@ func (m *Map) update(dt float64, p *Player) {
 		}
 
 		if p.isHit {
-			b.life -= rand.Intn(2)
+			b.life -= float64(rand.Intn(3))
 			if b.life < 0 {
 				b.life = 0
 			}
@@ -321,6 +379,25 @@ func (m *Map) update(dt float64, p *Player) {
 			}
 			aliveBuildings = append(aliveBuildings, b)
 		}
+
+		state := "Good"
+		if b.life < 70 {
+			state = "Med"
+		}
+
+		if b.life < 30 {
+			state = "Bad"
+		}
+
+		if b.kind != cantina {
+			b.counter++
+			if b.counter > 50 {
+				b.counter = 0
+				b.index = (b.index + 1) % len(b.anims[state])
+			}
+			b.frame = b.anims[state][b.index]
+		}
+
 	}
 	m.buildings = aliveBuildings
 	m.houseCount = houses
@@ -340,7 +417,7 @@ func (m *Map) update(dt float64, p *Player) {
 		}
 	}
 
-	if len(m.villagers) == 0 || len(m.villagers) >= 200 {
+	if len(m.villagers) == 0 || len(m.villagers) >= 100 {
 		// end game
 		screen = endScreen
 	}
@@ -357,6 +434,7 @@ func (m *Map) update(dt float64, p *Player) {
 
 	if focused && pressed == 1 {
 		if !panelRect.Contains(mouseStart) {
+			m.clearSelected()
 			focused = false
 		} else {
 			if rect := adapt(houseButton, panelRect); rect.Contains(mousePosition) {
@@ -403,7 +481,7 @@ func drawButton(imd *imdraw.IMDraw, txt string, textScale float64, btn, ref pixe
 	label.Color = color.Black
 	label.Dot.X -= label.BoundsOf(txt).W() / 2
 	fmt.Fprintf(label, txt)
-	label.Draw(canvas, pixel.IM.Scaled(label.Orig, textScale))
+	label.Draw(topCanvas, pixel.IM.Scaled(label.Orig, textScale))
 }
 
 func drawPanel(imd *imdraw.IMDraw) {
@@ -454,7 +532,7 @@ func (m *Map) draw(imag *imdraw.IMDraw) {
 	label := text.New(pixel.V(width/2+20, height-4*gap-4*h), uiFont)
 	label.Color = color.Black
 	fmt.Fprintf(label, txt)
-	label.Draw(canvas, pixel.IM)
+	label.Draw(topCanvas, pixel.IM)
 
 	m.drawSelectionZone(imag)
 }

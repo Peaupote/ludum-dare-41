@@ -50,6 +50,16 @@ type Player struct {
 	energy float64
 	food   float64
 	scrap  float64
+
+	sheet       pixel.Picture
+	anims       map[string][]pixel.Rect
+	rate        float64
+	animCounter float64
+	index       int
+
+	frame pixel.Rect
+
+	sprite *pixel.Sprite
 }
 
 func (p *Player) physics(dt float64) {
@@ -72,6 +82,14 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 	if bottom > 0 {
 		p.rigidBody.velocity.Y -= moveSpeed
 	}
+
+	p.animCounter++
+	if p.animCounter > 50 {
+		p.animCounter = 0
+		p.index = (p.index + 1) % 3
+	}
+
+	p.frame = p.anims["Idle"][p.index]
 
 	p.hasShootLaser = false
 	if space > 0 {
@@ -174,25 +192,26 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 	p.bullets = bullets
 
 	// TODO: bounce effect
-	if p.rigidBody.body.Min.X < 0 {
-		p.rigidBody.body = p.rigidBody.body.Moved(pixel.V(-p.rigidBody.body.Min.X, 0))
-		p.rigidBody.velocity.X = 0
+	r := p.rigidBody
+	if r.body.Min.X < 0 {
+		r.body = r.body.Moved(pixel.V(-r.body.Min.X, 0))
+		r.velocity.X = 0
 	}
 
 	half := width / 2
-	if p.rigidBody.body.Max.X > half {
-		p.rigidBody.body = p.rigidBody.body.Moved(pixel.V(half-p.rigidBody.body.Max.X, 0))
-		p.rigidBody.velocity.X = 0
+	if r.body.Max.X > half {
+		r.body = r.body.Moved(pixel.V(half-r.body.Max.X, 0))
+		r.velocity.X = 0
 	}
 
-	if p.rigidBody.body.Max.Y < 0 {
-		p.rigidBody.body = p.rigidBody.body.Moved(pixel.V(-p.rigidBody.body.Max.Y, 0))
-		p.rigidBody.velocity.Y = 0
+	if r.body.Max.Y > height {
+		r.body = r.body.Moved(pixel.V(height-r.body.Max.Y, 0))
+		r.velocity.Y = 0
 	}
 
-	if p.rigidBody.body.Min.Y > height {
-		p.rigidBody.body = p.rigidBody.body.Moved(pixel.V(height-p.rigidBody.body.Min.Y, 0))
-		p.rigidBody.velocity.Y = 0
+	if r.body.Min.Y < 0 {
+		r.body = r.body.Moved(pixel.V(-r.body.Min.Y, 0))
+		r.velocity.Y = 0
 	}
 
 	// Simulation
@@ -206,14 +225,20 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 
 func (p *Player) draw(imag *imdraw.IMDraw) {
 	// Shoot them up
-	imag.Color = colornames.Red
-	p.rigidBody.draw(imag)
+	if p.sprite == nil {
+		p.sprite = pixel.NewSprite(nil, pixel.Rect{})
+	}
+
+	p.sprite.Set(p.sheet, p.frame)
+	p.sprite.Draw(canvas, pixel.IM.
+		Moved(p.rigidBody.body.Center()).
+		Scaled(p.rigidBody.body.Center(), 2))
 
 	imag.Color = colornames.Chartreuse
 	if p.hasShootLaser {
 		x := (p.rigidBody.body.Min.X + p.rigidBody.body.Max.X) / 2
 		imag.Push(pixel.V(x, height))
-		imag.Push(pixel.V(x+20, p.rigidBody.body.Min.Y))
+		imag.Push(pixel.V(x+20, p.rigidBody.body.Max.Y))
 		imag.Rectangle(0)
 	}
 
@@ -241,7 +266,7 @@ func drawBar(imag *imdraw.IMDraw, c color.Color, i, x, x2, dx, data float64, nam
 	label := text.New(pixel.V(width/2+20, height-i*gap-(i-1)*h), uiFont)
 	label.Color = color.Black
 	fmt.Fprintf(label, txt)
-	label.Draw(canvas, pixel.IM)
+	label.Draw(topCanvas, pixel.IM)
 
 	if data < 0.1 {
 		imag.Color = colornames.Red

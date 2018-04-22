@@ -49,7 +49,7 @@ func menuRender(dt float64, win *pixelgl.Window, imd *imdraw.IMDraw) {
 
 func endRender(dt float64, win *pixelgl.Window, imd *imdraw.IMDraw) {
 	endHeader := "Loser !"
-	if len(m.villagers) >= 200 {
+	if len(m.villagers) >= 100 {
 		endHeader = "Whoa you made it !"
 	}
 
