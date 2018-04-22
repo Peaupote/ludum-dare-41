@@ -36,5 +36,5 @@ func (r *RigidBody) draw(t *imdraw.IMDraw) {
 
 func (r *RigidBody) hit(rect pixel.Rect) bool {
 	// TODO: seems not to work
-	return r.body.Intersect(rect).Area() != 0
+	return r.body.Norm().Intersect(rect.Norm()).Area() != 0
 }

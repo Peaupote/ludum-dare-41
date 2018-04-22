@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image/color"
 	"math"
 
 	"github.com/faiface/pixel"
@@ -16,6 +17,9 @@ const (
 
 	laserCost  = .2
 	bulletCost = .05
+
+	gap = 10.0
+	h   = 20.0
 )
 
 // Bullet is a single bullet the player can shoot
@@ -30,6 +34,7 @@ type Player struct {
 	mode          shootMode
 	counter       float64
 	hasShootLaser bool
+	isHit         bool
 
 	bullets []*Bullet
 
@@ -118,9 +123,14 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 	}
 
 	var os []*Ovni
+	p.isHit = false
 	for _, o := range ovnis {
 		if o.isAlive() {
 			os = append(os, o)
+		}
+
+		if o.rigidBody.hit(p.rigidBody.body) {
+			p.isHit = true
 		}
 	}
 
@@ -177,41 +187,30 @@ func (p *Player) draw(imag *imdraw.IMDraw) {
 	}
 
 	// Simulation
-	gap := 10.0
-	h := 20.0
 	dx := width * 0.1
 	x := width/2 + 20
 	x2 := x + dx
 
-	// TODO: can optimize here
-	imag.Color = colornames.Black
-	imag.Push(pixel.V(x, height-gap))
-	imag.Push(pixel.V(x2, height-gap-h))
-	imag.Rectangle(0)
+	drawBar(imag, colornames.Gold, 1, x, x2, dx, p.energy)
+	drawBar(imag, colornames.Green, 2, x, x2, dx, p.food)
+	drawBar(imag, colornames.Darkgray, 3, x, x2, dx, p.scrap)
+}
 
-	imag.Color = colornames.Gold
-	imag.Push(pixel.V(x, height-gap))
-	imag.Push(pixel.V(x+dx*p.energy, height-gap-h))
-	imag.Rectangle(0)
-
-	imag.Color = colornames.Black
-	imag.Push(pixel.V(x, height-2*gap-h))
-	imag.Push(pixel.V(x2, height-2*gap-2*h))
-	imag.Rectangle(0)
-
-	imag.Color = colornames.Green
-	imag.Push(pixel.V(x, height-2*gap-h))
-	imag.Push(pixel.V(x+dx*p.food, height-2*gap-2*h))
-	imag.Rectangle(0)
+func drawBar(imag *imdraw.IMDraw, c color.Color, i, x, x2, dx, data float64) {
+	if data < 0.1 {
+		imag.Color = colornames.Red
+		imag.Push(pixel.V(x-5, height-i*gap-(i-1)*h+5))
+		imag.Push(pixel.V(x2+5, height-i*gap-i*h-5))
+		imag.Rectangle(0)
+	}
 
 	imag.Color = colornames.Black
-	imag.Push(pixel.V(x, height-3*gap-2*h))
-	imag.Push(pixel.V(x2, height-3*gap-3*h))
+	imag.Push(pixel.V(x, height-i*gap-(i-1)*h))
+	imag.Push(pixel.V(x2, height-i*gap-i*h))
 	imag.Rectangle(0)
 
-	imag.Color = colornames.Darkgray
-	imag.Push(pixel.V(x, height-3*gap-2*h))
-	imag.Push(pixel.V(x+dx*p.scrap, height-3*gap-3*h))
+	imag.Color = c
+	imag.Push(pixel.V(x, height-i*gap-(i-1)*h))
+	imag.Push(pixel.V(x+dx*data, height-i*gap-i*h))
 	imag.Rectangle(0)
-
 }

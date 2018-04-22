@@ -2,6 +2,7 @@ package main
 
 import (
 	"image/color"
+	"math/rand"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
@@ -11,14 +12,18 @@ import (
 type Map struct {
 	villagers []*Villager
 	buildings []*Building
+
+	houseCount int
 }
 
 var (
 	focused   = false
-	panelRect = pixel.R(defaultWidth/2+100, 100, defaultWidth-100, defaultHeight-100)
+	panelRect = pixel.R(defaultWidth/2*.1, (defaultHeight-400)/2, defaultWidth/2*.9, (defaultHeight-400)/2+400)
 
 	houseButton   = pixel.R(.05, .55, .45, .95)
+	labButton     = pixel.R(.05, .05, .45, .45)
 	cantinaButton = pixel.R(.55, .55, .95, .95)
+	repairButton  = pixel.R(.55, .05, .95, .45)
 
 	landing = -1 // kind of building you want to land
 )
@@ -31,19 +36,27 @@ const (
 
 	house   = 0
 	cantina = 1
+	lab     = 2
+	repair  = 3
 
 	houseHalfSize = 30
 	houseCost     = .05
 
 	cantinaRad  = 40
-	cantinaCost = .50
+	cantinaCost = .2
+
+	labHalfSize = 50
+	labCost     = .5
 )
 
 type Building struct {
-	kind     kindOfBuildings
-	position pixel.Rect
-	life     int
-	creating bool
+	kind       kindOfBuildings
+	position   pixel.Rect
+	life       int
+	creating   bool
+	buildSince int
+
+	data int
 }
 
 type Villager struct {
@@ -62,7 +75,8 @@ func createBuilding(k kindOfBuildings, p pixel.Rect) *Building {
 		kind:     k,
 		position: p,
 		creating: true,
-		life:     0,
+		life:     5,
+		data:     0,
 	}
 }
 
@@ -81,6 +95,16 @@ func (b *Building) draw(imd *imdraw.IMDraw) {
 			imd.Color = colornames.Darkkhaki
 		} else {
 			imd.Color = colornames.Brown
+		}
+
+		imd.Push(b.position.Min)
+		imd.Push(b.position.Max)
+		imd.Rectangle(0)
+	case lab:
+		if b.creating {
+			imd.Color = colornames.Chocolate
+		} else {
+			imd.Color = colornames.Darkorchid
 		}
 
 		imd.Push(b.position.Min)
@@ -109,38 +133,13 @@ func getSelected(villagers []*Villager) []*Villager {
 	return selected
 }
 
-func adapt(rect1, rect2 pixel.Rect) pixel.Rect {
-	return pixel.R(rect1.Min.X*rect2.W(),
-		rect1.Min.Y*rect2.H(),
-		rect1.Max.X*rect2.W(),
-		rect1.Max.Y*rect2.H()).Moved(rect2.Min)
-}
-
-func drawPanel(imd *imdraw.IMDraw) {
-	// container
-	imd.Color = colornames.Wheat
-	imd.Push(panelRect.Min)
-	imd.Push(panelRect.Max)
-	imd.Rectangle(0)
-
-	// house button
-	rect := adapt(houseButton, panelRect)
-	imd.Color = colornames.Black
-	imd.Push(rect.Min)
-	imd.Push(rect.Max)
-	imd.Rectangle(1)
-
-	// label := text.New(pixel.V(0.1, .6).ScaledXY(pixel.V(panelRect.W(), panelRect.H()).Add(panelRect.Min)), uiFont)
-	// fmt.Fprint(label, "Buy a house")
-	// label.Draw(imd, pixel.IM)
-
-	// cantina button
-	rect = adapt(cantinaButton, panelRect)
-	imd.Color = colornames.Black
-	imd.Push(rect.Min)
-	imd.Push(rect.Max)
-	imd.Rectangle(1)
-
+func (m *Map) clickBuilding() *Building {
+	for _, b := range m.buildings {
+		if b.position.Contains(mouseStart) {
+			return b
+		}
+	}
+	return nil
 }
 
 func (m *Map) canLandBuilding(target pixel.Rect) bool {
@@ -150,6 +149,14 @@ func (m *Map) canLandBuilding(target pixel.Rect) bool {
 		}
 	}
 	return true
+}
+
+func (m *Map) forSelected(fn func(int, *Villager)) {
+	for i, v := range m.villagers {
+		if v.selected {
+			fn(i, v)
+		}
+	}
 }
 
 func (m *Map) update(dt float64, p *Player) {
@@ -171,6 +178,16 @@ func (m *Map) update(dt float64, p *Player) {
 				m.setTargetForSelectedVillagers(b)
 			}
 		}
+	case lab:
+		if pressed == 1 && !focused && p.scrap-labCost >= 0 {
+			target := pixel.R(mouseLocation.X-labHalfSize, mouseLocation.Y-labHalfSize, mouseLocation.X+labHalfSize, mouseLocation.Y+labHalfSize)
+			if target.Intersect(rightSide).Area() == target.Area() && m.canLandBuilding(target) {
+				b := createBuilding(lab, target)
+				m.buildings = append(m.buildings, b)
+				p.scrap -= labCost
+				m.setTargetForSelectedVillagers(b)
+			}
+		}
 	case cantina:
 		if pressed == 1 && !focused && p.scrap-cantinaCost >= 0 {
 			target := pixel.R(mouseLocation.X-cantinaRad, mouseLocation.Y-cantinaRad, mouseLocation.X+cantinaRad, mouseLocation.Y+cantinaRad)
@@ -179,6 +196,15 @@ func (m *Map) update(dt float64, p *Player) {
 				m.buildings = append(m.buildings, b)
 				p.scrap -= cantinaCost
 				m.setTargetForSelectedVillagers(b)
+			}
+		}
+	case repair:
+		if pressed == 1 && !focused {
+			b := m.clickBuilding()
+			if b != nil {
+				m.forSelected(func(i int, v *Villager) {
+					v.target = b
+				})
 			}
 		}
 	}
@@ -190,6 +216,10 @@ func (m *Map) update(dt float64, p *Player) {
 		v.rigidBody.velocity = v.rigidBody.velocity.
 			Add(p.rigidBody.velocity).
 			Scaled(.1)
+
+		if v.target != nil && v.target.life == 0 {
+			v.target = nil
+		}
 
 		if v.target != nil {
 			v.rigidBody.velocity = v.rigidBody.velocity.
@@ -204,6 +234,10 @@ func (m *Map) update(dt float64, p *Player) {
 				if v.target.life >= 100 {
 					v.target.life = 100
 					v.target.creating = false
+					if v.target.kind == house {
+						m.houseCount++
+					}
+					v.target.buildSince = t
 					v.target = nil
 				}
 			}
@@ -212,6 +246,7 @@ func (m *Map) update(dt float64, p *Player) {
 		v.rigidBody.physics(dt)
 	}
 
+	var aliveBuildings []*Building
 	for _, b := range m.buildings {
 		if !b.creating {
 			switch b.kind {
@@ -221,21 +256,58 @@ func (m *Map) update(dt float64, p *Player) {
 					p.food = 1
 				}
 			case house:
-				if len(m.villagers) < 10 {
-					m.villagers = append(m.villagers, &Villager{
-						rigidBody: NewRigidBodyBySize(b.position.Center().X, b.position.Center().Y, 10, 10, pixel.ZV),
-					})
+				if (t+b.buildSince)%250 == 0 && len(m.villagers) < m.houseCount*5 {
+					if b.data < 5 {
+						m.villagers = append(m.villagers, &Villager{
+							rigidBody: NewRigidBodyBySize(b.position.Center().X+rand.Float64()*houseHalfSize,
+								b.position.Center().Y+rand.Float64()*houseHalfSize, 10, 10, pixel.ZV),
+						})
+						b.data++
+					}
+				}
+			case lab:
+				p.energy += 0.005
+				if p.energy >= 1 {
+					p.energy = 1
 				}
 			}
 		}
+
+		if p.isHit {
+			b.life -= rand.Intn(2)
+			if b.life < 0 {
+				b.life = 0
+			}
+		}
+
+		if b.life > 0 {
+			aliveBuildings = append(aliveBuildings, b)
+		}
 	}
+	m.buildings = aliveBuildings
 
 	if p.food <= 0 {
-		// TODO: kill random villagers or lose
 		p.food = 0
+
+		if t%200 == 0 {
+			var survivingVillager []*Villager
+			for i, v := range m.villagers {
+				if i == rand.Intn(len(m.villagers)) {
+					survivingVillager = append(survivingVillager, v)
+				}
+			}
+
+			m.villagers = survivingVillager
+		}
 	}
 
-	panelRect = pixel.R(width/2+100, 100, width-100, height-100)
+	if len(m.villagers) == 0 {
+		// lose
+	} else if len(m.villagers) >= 200 {
+		// win
+	}
+
+	panelRect = pixel.R(width/2+width/2*.1, (height-400)/2, width/2+width/2*.9, (height-400)/2+400)
 	if !focused {
 		if selected := getSelected(m.villagers); pressed == 0 && len(selected) > 0 {
 			focused = true
@@ -259,8 +331,49 @@ func (m *Map) update(dt float64, p *Player) {
 				focused = false
 			}
 
+			if rect := adapt(labButton, panelRect); rect.Contains(mousePosition) {
+				landing = lab
+				focused = false
+			}
+
+			if rect := adapt(repairButton, panelRect); rect.Contains(mousePosition) {
+				landing = repair
+				focused = false
+			}
+
 		}
 	}
+}
+
+// Graphic functions
+
+func adapt(rect1, rect2 pixel.Rect) pixel.Rect {
+	return pixel.R(rect1.Min.X*rect2.W(),
+		rect1.Min.Y*rect2.H(),
+		rect1.Max.X*rect2.W(),
+		rect1.Max.Y*rect2.H()).Moved(rect2.Min)
+}
+
+func drawButton(imd *imdraw.IMDraw, btn pixel.Rect) {
+	rect := adapt(btn, panelRect)
+	imd.Color = colornames.Black
+	imd.Push(rect.Min)
+	imd.Push(rect.Max)
+	imd.Rectangle(1)
+}
+
+func drawPanel(imd *imdraw.IMDraw) {
+	// container
+	imd.Color = colornames.Wheat
+	imd.Push(panelRect.Min)
+	imd.Push(panelRect.Max)
+	imd.Rectangle(0)
+
+	// house button
+	drawButton(imd, houseButton)
+	drawButton(imd, cantinaButton)
+	drawButton(imd, labButton)
+	drawButton(imd, repairButton)
 }
 
 func (m *Map) draw(imag *imdraw.IMDraw) {
@@ -281,6 +394,11 @@ func (m *Map) draw(imag *imdraw.IMDraw) {
 		imag.Color = color.RGBA{255, 0, 0, 100}
 		imag.Push(mouseLocation.Add(pixel.V(-houseHalfSize, -houseHalfSize)))
 		imag.Push(mouseLocation.Add(pixel.V(houseHalfSize, houseHalfSize)))
+		imag.Rectangle(0)
+	case lab:
+		imag.Color = color.RGBA{255, 0, 0, 100}
+		imag.Push(mouseLocation.Add(pixel.V(-labHalfSize, -labHalfSize)))
+		imag.Push(mouseLocation.Add(pixel.V(labHalfSize, labHalfSize)))
 		imag.Rectangle(0)
 	case cantina:
 		imag.Color = color.RGBA{255, 0, 0, 100}

@@ -43,6 +43,7 @@ var (
 
 	width  float64
 	height float64
+	t      int
 )
 
 func applyControls(win *pixelgl.Window) {
@@ -180,6 +181,7 @@ func run() {
 
 	imd := imdraw.New(nil)
 	last := time.Now()
+	t = 0
 
 	player := &Player{
 		rigidBody: &RigidBody{
@@ -218,6 +220,7 @@ func run() {
 		}
 
 		dt := time.Since(last).Seconds()
+		t++
 		last = time.Now()
 
 		applyControls(win)
