@@ -9,7 +9,17 @@ import (
 )
 
 const (
+	pauseMode     = 0
+	asteroidField = 1
+	piratesAttack = 2
+
 	asteroid = 0
+	pirates  = 1
+)
+
+var (
+	genMode    = piratesAttack
+	genCounter = 0
 )
 
 type kindOfOvni int
@@ -48,19 +58,42 @@ func updateUniverse(dt float64, ovnis []*Ovni) []*Ovni {
 		}
 	}
 
-	// TODO: less "random" random generation
-	if rand.Intn(100) == 1 {
+	if genCounter%1000 == 0 {
+		genMode = (genMode + 1) % 3
+		genCounter = 0
+	}
+
+	genCounter++
+
+	switch genMode {
+	case asteroidField:
+		ovnis = genAsteroids(ovnis)
+	case piratesAttack:
+		ovnis = genPirates(ovnis)
+	}
+
+	return ovnis
+}
+
+func genAsteroids(ovnis []*Ovni) []*Ovni {
+	if genCounter%50 == 0 {
+		alpha := 1 + rand.Float64()
+		s := 20 * alpha
 		ovnis = append(ovnis, &Ovni{
 			rigidBody: NewRigidBodyBySize(
-				rand.Float64()*(width/2),
-				height+10,
-				50.0, 50.0,
-				pixel.V(0, -100),
+				rand.Float64()*width/2,
+				height+50,
+				s,
+				s,
+				pixel.V(0, -100*alpha),
 			),
-			life: rand.Intn(10) + 5,
+			life: int(2 * alpha),
 			kind: asteroid,
 		})
 	}
+	return ovnis
+}
 
+func genPirates(ovnis []*Ovni) []*Ovni {
 	return ovnis
 }

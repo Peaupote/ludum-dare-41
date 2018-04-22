@@ -273,6 +273,8 @@ func startGame() {
 	}}
 
 	ovnis = []*Ovni{}
+	landing = -1
+	focused = false
 
 	m = &Map{
 		villagers: vils,

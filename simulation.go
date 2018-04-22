@@ -162,12 +162,16 @@ func (m *Map) forSelected(fn func(int, *Villager)) {
 	}
 }
 
+func (m *Map) clearSelected() {
+	for _, v := range m.villagers {
+		v.selected = false
+	}
+}
+
 func (m *Map) update(dt float64, p *Player) {
 	if rightPressed > 0 || escape > 0 {
 		landing = -1
-		for _, v := range m.villagers {
-			v.selected = false
-		}
+		m.clearSelected()
 	}
 
 	switch landing {
@@ -180,6 +184,8 @@ func (m *Map) update(dt float64, p *Player) {
 				p.scrap -= houseCost
 				m.setTargetForSelectedVillagers(b)
 			}
+			landing = -1
+			m.clearSelected()
 		}
 	case lab:
 		if pressed == 1 && !focused && p.scrap-labCost >= 0 {
@@ -190,6 +196,8 @@ func (m *Map) update(dt float64, p *Player) {
 				p.scrap -= labCost
 				m.setTargetForSelectedVillagers(b)
 			}
+			m.clearSelected()
+			landing = -1
 		}
 	case cantina:
 		if pressed == 1 && !focused && p.scrap-cantinaCost >= 0 {
@@ -200,6 +208,8 @@ func (m *Map) update(dt float64, p *Player) {
 				p.scrap -= cantinaCost
 				m.setTargetForSelectedVillagers(b)
 			}
+			m.clearSelected()
+			landing = -1
 		}
 	case repair:
 		if pressed == 1 && !focused {
@@ -209,6 +219,7 @@ func (m *Map) update(dt float64, p *Player) {
 					v.target = b
 				})
 			}
+			landing = -1
 		}
 	}
 
@@ -246,6 +257,26 @@ func (m *Map) update(dt float64, p *Player) {
 			}
 		}
 
+		half := width/2 + 20
+		if v.rigidBody.body.Min.X < half {
+			v.rigidBody.body = v.rigidBody.body.Moved(pixel.V(half-v.rigidBody.body.Min.X, 0))
+			v.rigidBody.velocity.X = 0
+		}
+
+		if v.rigidBody.body.Max.X > width {
+			v.rigidBody.body = v.rigidBody.body.Moved(pixel.V(width-v.rigidBody.body.Max.X, 0))
+			v.rigidBody.velocity.X = 0
+		}
+
+		if v.rigidBody.body.Max.Y < 0 {
+			v.rigidBody.body = v.rigidBody.body.Moved(pixel.V(-v.rigidBody.body.Max.Y, 0))
+			v.rigidBody.velocity.Y = 0
+		}
+
+		if v.rigidBody.body.Min.Y > height {
+			v.rigidBody.body = v.rigidBody.body.Moved(pixel.V(height-v.rigidBody.body.Min.Y, 0))
+			v.rigidBody.velocity.Y = 0
+		}
 		v.rigidBody.physics(dt)
 	}
 

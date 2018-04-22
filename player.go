@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"math"
+	"math/rand"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
+	"github.com/faiface/pixel/text"
 	"golang.org/x/image/colornames"
 )
 
@@ -18,13 +21,18 @@ const (
 	laserCost  = .2
 	bulletCost = .05
 
-	gap = 10.0
+	gap = 15.0
 	h   = 20.0
 )
 
 // Bullet is a single bullet the player can shoot
 type Bullet struct {
 	rigidBody *RigidBody
+}
+
+type Scrap struct {
+	rigidBody *RigidBody
+	value     float64
 }
 
 // Player represents the player
@@ -37,6 +45,7 @@ type Player struct {
 	isHit         bool
 
 	bullets []*Bullet
+	scraps  []*Scrap
 
 	energy float64
 	food   float64
@@ -64,6 +73,7 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 		p.rigidBody.velocity.Y -= moveSpeed
 	}
 
+	p.hasShootLaser = false
 	if space > 0 {
 		if p.mode == shootLaser && space < 10 && p.energy-laserCost > 0 {
 			p.energy -= laserCost
@@ -127,6 +137,18 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 	for _, o := range ovnis {
 		if o.isAlive() {
 			os = append(os, o)
+		} else {
+			alpha := 1 + rand.Float64()
+			p.scraps = append(p.scraps, &Scrap{
+				rigidBody: NewRigidBodyBySize(
+					o.rigidBody.body.Center().X,
+					o.rigidBody.body.Center().Y,
+					10*alpha,
+					10*alpha,
+					pixel.V(0, -50*alpha),
+				),
+				value: (alpha - 1) / 4,
+			})
 		}
 
 		if o.rigidBody.hit(p.rigidBody.body) {
@@ -136,6 +158,19 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 
 	ovnis = os
 
+	var scrapsNotTaken []*Scrap
+	for _, s := range p.scraps {
+		if p.rigidBody.hit(s.rigidBody.body) {
+			p.scrap += s.value
+			if p.scrap > 1 {
+				p.scrap = 1
+			}
+		} else {
+			scrapsNotTaken = append(scrapsNotTaken, s)
+		}
+	}
+
+	p.scraps = scrapsNotTaken
 	p.bullets = bullets
 
 	// TODO: bounce effect
@@ -186,17 +221,28 @@ func (p *Player) draw(imag *imdraw.IMDraw) {
 		b.rigidBody.draw(imag)
 	}
 
+	for _, s := range p.scraps {
+		imag.Color = colornames.Darkgray
+		s.rigidBody.draw(imag)
+	}
+
 	// Simulation
 	dx := width * 0.1
 	x := width/2 + 20
 	x2 := x + dx
 
-	drawBar(imag, colornames.Gold, 1, x, x2, dx, p.energy)
-	drawBar(imag, colornames.Green, 2, x, x2, dx, p.food)
-	drawBar(imag, colornames.Darkgray, 3, x, x2, dx, p.scrap)
+	drawBar(imag, colornames.Gold, 1, x, x2, dx, p.energy, "Energy")
+	drawBar(imag, colornames.Green, 2, x, x2, dx, p.food, "Food")
+	drawBar(imag, colornames.Darkgray, 3, x, x2, dx, p.scrap, "Scrap")
 }
 
-func drawBar(imag *imdraw.IMDraw, c color.Color, i, x, x2, dx, data float64) {
+func drawBar(imag *imdraw.IMDraw, c color.Color, i, x, x2, dx, data float64, name string) {
+	txt := fmt.Sprintf("%s: %d", name, int(data*100))
+	label := text.New(pixel.V(width/2+20, height-i*gap-(i-1)*h), uiFont)
+	label.Color = color.Black
+	fmt.Fprintf(label, txt)
+	label.Draw(canvas, pixel.IM)
+
 	if data < 0.1 {
 		imag.Color = colornames.Red
 		imag.Push(pixel.V(x-5, height-i*gap-(i-1)*h+5))
