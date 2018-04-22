@@ -205,12 +205,12 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 	}
 
 	if r.body.Max.Y > height {
-		r.body = r.body.Moved(pixel.V(height-r.body.Max.Y, 0))
+		r.body = r.body.Moved(pixel.V(0, height-r.body.Max.Y))
 		r.velocity.Y = 0
 	}
 
 	if r.body.Min.Y < 0 {
-		r.body = r.body.Moved(pixel.V(-r.body.Min.Y, 0))
+		r.body = r.body.Moved(pixel.V(0, -r.body.Min.Y))
 		r.velocity.Y = 0
 	}
 

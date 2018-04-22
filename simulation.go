@@ -285,43 +285,45 @@ func (m *Map) update(dt float64, p *Player) {
 		}
 		v.frame = v.anims["Idle"][v.index]
 
-		// TODO: add inerty
-		v.rigidBody.velocity = v.rigidBody.velocity.
-			Add(p.rigidBody.velocity).Scaled(.5)
+		r := v.rigidBody
 
 		half := width/2 + 20
-		if v.rigidBody.body.Min.X < half {
-			v.rigidBody.body = v.rigidBody.body.Moved(pixel.V(half-v.rigidBody.body.Min.X, 0))
-			v.rigidBody.velocity.X = 0
+		if r.body.Min.X < half {
+			r.body = r.body.Moved(pixel.V(half-r.body.Min.X, 0))
+			r.velocity = pixel.ZV
 		}
 
-		if v.rigidBody.body.Max.X > width {
-			v.rigidBody.body = v.rigidBody.body.Moved(pixel.V(width-v.rigidBody.body.Max.X, 0))
-			v.rigidBody.velocity.X = 0
+		if r.body.Max.X > width {
+			r.body = r.body.Moved(pixel.V(width-r.body.Max.X, 0))
+			r.velocity = pixel.ZV
 		}
 
-		if v.rigidBody.body.Max.Y < 0 {
-			v.rigidBody.body = v.rigidBody.body.Moved(pixel.V(-v.rigidBody.body.Max.Y, 0))
-			v.rigidBody.velocity.Y = 0
+		if r.body.Min.Y < 0 {
+			r.body = r.body.Moved(pixel.V(0, -r.body.Min.Y))
+			r.velocity = pixel.ZV
 		}
 
-		if v.rigidBody.body.Max.Y > height {
-			v.rigidBody.body = v.rigidBody.body.Moved(pixel.V(height-v.rigidBody.body.Max.Y, 0))
-			v.rigidBody.velocity.Y = 0
+		if r.body.Max.Y > height {
+			r.body = r.body.Moved(pixel.V(0, height-r.body.Max.Y))
+			r.velocity = pixel.ZV
 		}
+
+		// TODO: add inerty
+		r.velocity = r.velocity.
+			Add(p.rigidBody.velocity).Scaled(.5)
 
 		if v.target != nil && v.target.life == 0 {
 			v.target = nil
 		}
 
 		if v.target != nil {
-			v.rigidBody.velocity = v.rigidBody.velocity.
+			r.velocity = r.velocity.
 				Add(v.target.position.Center().
-					Add(v.rigidBody.body.Center().Scaled(-1)).
+					Add(r.body.Center().Scaled(-1)).
 					Scaled(villagerSpeed * dt))
 
-			if v.rigidBody.body.Intersect(v.target.position).Area() == v.rigidBody.body.Area() {
-				v.rigidBody.velocity = pixel.ZV
+			if r.body.Intersect(v.target.position).Area() == r.body.Area() {
+				r.velocity = pixel.ZV
 				v.target.life += .5
 
 				if v.target.life >= 100 {
@@ -336,7 +338,7 @@ func (m *Map) update(dt float64, p *Player) {
 			}
 		}
 
-		v.rigidBody.physics(dt)
+		r.physics(dt)
 	}
 
 	var aliveBuildings []*Building
