@@ -13,9 +13,8 @@ type Map struct {
 	buildings []*Building
 }
 
-var focused = false
-
 var (
+	focused   = false
 	panelRect = pixel.R(defaultWidth/2+100, 100, defaultWidth-100, defaultHeight-100)
 
 	houseButton   = pixel.R(.05, .55, .45, .95)
@@ -27,18 +26,30 @@ var (
 type kindOfBuildings int
 
 const (
+	villagerSpeed = 50
+	foodSupply    = .001
+
 	house   = 0
 	cantina = 1
+
+	houseHalfSize = 30
+	houseCost     = .05
+
+	cantinaRad  = 40
+	cantinaCost = .50
 )
 
 type Building struct {
 	kind     kindOfBuildings
 	position pixel.Rect
 	life     int
+	creating bool
 }
 
 type Villager struct {
 	rigidBody *RigidBody
+	target    *Building
+	selected  bool
 }
 
 func (v *Villager) draw(imag *imdraw.IMDraw) {
@@ -46,15 +57,45 @@ func (v *Villager) draw(imag *imdraw.IMDraw) {
 	v.rigidBody.draw(imag)
 }
 
+func createBuilding(k kindOfBuildings, p pixel.Rect) *Building {
+	return &Building{
+		kind:     k,
+		position: p,
+		creating: true,
+		life:     0,
+	}
+}
+
+func (m *Map) setTargetForSelectedVillagers(b *Building) {
+	for _, v := range m.villagers {
+		if v.selected {
+			v.target = b
+		}
+	}
+}
+
 func (b *Building) draw(imd *imdraw.IMDraw) {
 	switch b.kind {
 	case house:
-		imd.Color = colornames.Darkkhaki
+		if b.creating {
+			imd.Color = colornames.Darkkhaki
+		} else {
+			imd.Color = colornames.Brown
+		}
+
+		imd.Push(b.position.Min)
+		imd.Push(b.position.Max)
+		imd.Rectangle(0)
+	case cantina:
+		if b.creating {
+			imd.Color = colornames.Greenyellow
+		} else {
+			imd.Color = colornames.Green
+		}
+		imd.Push(b.position.Center())
+		imd.Circle(cantinaRad, 0)
 	}
 
-	imd.Push(b.position.Min)
-	imd.Push(b.position.Max)
-	imd.Rectangle(0)
 }
 
 func getSelected(villagers []*Villager) []*Villager {
@@ -102,36 +143,122 @@ func drawPanel(imd *imdraw.IMDraw) {
 
 }
 
-func (m *Map) update(dt float64) {
-	if rightPressed > 0 {
-		landing = 0
+func (m *Map) canLandBuilding(target pixel.Rect) bool {
+	for _, b := range m.buildings {
+		if b.position.Intersect(target).Area() != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (m *Map) update(dt float64, p *Player) {
+	if rightPressed > 0 || escape > 0 {
+		landing = -1
+		for _, v := range m.villagers {
+			v.selected = false
+		}
 	}
 
 	switch landing {
 	case house:
-		if pressed == 1 && !focused {
-			m.buildings = append(m.buildings, &Building{
-				kind:     house,
-				position: pixel.R(mouseLocation.X-50, mouseLocation.Y-50, mouseLocation.X+50, mouseLocation.Y+50),
-				life:     100,
-			})
+		if pressed == 1 && !focused && p.scrap-houseCost >= 0 {
+			target := pixel.R(mouseLocation.X-houseHalfSize, mouseLocation.Y-houseHalfSize, mouseLocation.X+houseHalfSize, mouseLocation.Y+houseHalfSize)
+			if target.Intersect(rightSide).Area() == target.Area() && m.canLandBuilding(target) {
+				b := createBuilding(house, target)
+				m.buildings = append(m.buildings, b)
+				p.scrap -= houseCost
+				m.setTargetForSelectedVillagers(b)
+			}
+		}
+	case cantina:
+		if pressed == 1 && !focused && p.scrap-cantinaCost >= 0 {
+			target := pixel.R(mouseLocation.X-cantinaRad, mouseLocation.Y-cantinaRad, mouseLocation.X+cantinaRad, mouseLocation.Y+cantinaRad)
+			if target.Intersect(rightSide).Area() == target.Area() && m.canLandBuilding(target) {
+				b := createBuilding(cantina, target)
+				m.buildings = append(m.buildings, b)
+				p.scrap -= cantinaCost
+				m.setTargetForSelectedVillagers(b)
+			}
 		}
 	}
 
+	for _, v := range m.villagers {
+		p.food -= foodSupply
+
+		// TODO: add inerty
+		v.rigidBody.velocity = v.rigidBody.velocity.
+			Add(p.rigidBody.velocity).
+			Scaled(.1)
+
+		if v.target != nil {
+			v.rigidBody.velocity = v.rigidBody.velocity.
+				Add(v.target.position.Center().
+					Add(v.rigidBody.body.Center().Scaled(-1)).
+					Scaled(villagerSpeed * dt))
+
+			if v.rigidBody.body.Intersect(v.target.position).Area() == v.rigidBody.body.Area() {
+				v.rigidBody.velocity = pixel.ZV
+				v.target.life++
+
+				if v.target.life >= 100 {
+					v.target.life = 100
+					v.target.creating = false
+					v.target = nil
+				}
+			}
+		}
+
+		v.rigidBody.physics(dt)
+	}
+
+	for _, b := range m.buildings {
+		if !b.creating {
+			switch b.kind {
+			case cantina:
+				p.food += 0.01
+				if p.food >= 1 {
+					p.food = 1
+				}
+			case house:
+				if len(m.villagers) < 10 {
+					m.villagers = append(m.villagers, &Villager{
+						rigidBody: NewRigidBodyBySize(b.position.Center().X, b.position.Center().Y, 10, 10, pixel.ZV),
+					})
+				}
+			}
+		}
+	}
+
+	if p.food <= 0 {
+		// TODO: kill random villagers or lose
+		p.food = 0
+	}
+
 	panelRect = pixel.R(width/2+100, 100, width-100, height-100)
-	if selected := getSelected(m.villagers); pressed == 0 && len(selected) > 0 {
-		focused = true
+	if !focused {
+		if selected := getSelected(m.villagers); pressed == 0 && len(selected) > 0 {
+			focused = true
+			for _, v := range selected {
+				v.selected = true
+			}
+		}
 	}
 
 	if focused && pressed == 1 {
 		if !panelRect.Contains(mouseStart) {
 			focused = false
 		} else {
-			rect := adapt(houseButton, panelRect)
-			if rect.Contains(mousePosition) {
+			if rect := adapt(houseButton, panelRect); rect.Contains(mousePosition) {
 				landing = house
 				focused = false
 			}
+
+			if rect := adapt(cantinaButton, panelRect); rect.Contains(mousePosition) {
+				landing = cantina
+				focused = false
+			}
+
 		}
 	}
 }
@@ -152,10 +279,13 @@ func (m *Map) draw(imag *imdraw.IMDraw) {
 	switch landing {
 	case house:
 		imag.Color = color.RGBA{255, 0, 0, 100}
-		// TODO: check for collisions
-		imag.Push(mouseLocation.Add(pixel.V(-50, -50)))
-		imag.Push(mouseLocation.Add(pixel.V(50, 50)))
+		imag.Push(mouseLocation.Add(pixel.V(-houseHalfSize, -houseHalfSize)))
+		imag.Push(mouseLocation.Add(pixel.V(houseHalfSize, houseHalfSize)))
 		imag.Rectangle(0)
+	case cantina:
+		imag.Color = color.RGBA{255, 0, 0, 100}
+		imag.Push(mouseLocation)
+		imag.Circle(cantinaRad, 0)
 	}
 
 	m.drawSelectionZone(imag)

@@ -8,7 +8,9 @@ TODO List
 - [ ] Asteroïds, Blackholes, Pirates
 - [ ] Background image scrolling
 - [ ] Ressources loop
-- [ ] Building creation
+- [ ] Onvis must drop scrap when they dies
+- [ ] Collisons
+- [x] Building creation
 - [ ] User interface
   - [ ] Create a peon
   - [ ] Building interface

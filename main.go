@@ -28,6 +28,7 @@ var (
 	space  = 0
 	enter  = 0
 	tab    = 0
+	escape = 0
 
 	rightPressed  = 0
 	pressed       = 0
@@ -73,6 +74,10 @@ func applyControls(win *pixelgl.Window) {
 		tab = 0
 	}
 
+	if win.JustReleased(pixelgl.KeyEscape) {
+		escape = 0
+	}
+
 	//
 
 	if win.Pressed(pixelgl.KeyLeft) {
@@ -101,6 +106,10 @@ func applyControls(win *pixelgl.Window) {
 
 	if win.Pressed(pixelgl.KeyTab) {
 		tab++
+	}
+
+	if win.Pressed(pixelgl.KeyEscape) {
+		escape++
 	}
 
 	//
@@ -193,7 +202,7 @@ func run() {
 	var ovnis []*Ovni
 
 	vils := []*Villager{&Villager{
-		rigidBody: NewRigidBodyBySize(defaultWidth/2+100, 100, 50, 50, pixel.ZV),
+		rigidBody: NewRigidBodyBySize(defaultWidth/2+100, 100, 10, 10, pixel.ZV),
 	}}
 
 	m := &Map{
@@ -201,8 +210,10 @@ func run() {
 		buildings: nil,
 	}
 
+	win.SetSmooth(true)
+
 	for !win.Closed() {
-		if win.JustPressed(pixelgl.KeyEscape) {
+		if win.JustPressed(pixelgl.KeyQ) {
 			return
 		}
 
@@ -211,10 +222,18 @@ func run() {
 
 		applyControls(win)
 
+		if enter > 0 && player.energy > .01 {
+			dt /= 3
+			player.energy -= .01
+			if player.energy < 0 {
+				player.energy = 0
+			}
+		}
+
 		// update
 		ovnis = updateUniverse(dt, ovnis)
 		ovnis = player.upadte(dt, ovnis)
-		m.update(dt)
+		m.update(dt, player)
 
 		win.Clear(colornames.Skyblue)
 		imd.Clear()

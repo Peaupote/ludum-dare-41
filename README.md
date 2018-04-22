@@ -47,11 +47,10 @@ Ressources:
 Technological tree:
 
 * Tiers 0:
-  * Center: main building, produce more pioneer
-  * House: needed to extends the supply limit.
+  * House: needed to extends the supply limit and produce more workers.
   * Cantina: peoples go there to produce food
 * Tiers 1:
-  * In-progress
+  * Lab increase energy production
 
 If the ship
 
