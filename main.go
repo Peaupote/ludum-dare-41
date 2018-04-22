@@ -324,6 +324,12 @@ func startGame() {
 		panic(err)
 	}
 
+	if hardMode {
+		popToWin = 150
+	} else {
+		popToWin = 50
+	}
+
 	player = &Player{
 		rigidBody: &RigidBody{
 			body:     pixel.R(200, 200, 260, 300),

@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"golang.org/x/image/colornames"
+
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
@@ -24,10 +26,12 @@ var (
 
 	menuButton = pixel.R(0.25, 0.1, .45, .2)
 	quitButton = pixel.R(0.55, 0.1, .75, .2)
+
+	hardMode bool
 )
 
 func menuUpdate(dt float64, win *pixelgl.Window, imd *imdraw.IMDraw) {
-	if pressed > 0 {
+	if pressed == 1 {
 		if rect := adapt(menuButton, canvas.Bounds()); rect.Contains(mouseStart) {
 			startGame()
 			screen = gameScreen
@@ -35,6 +39,10 @@ func menuUpdate(dt float64, win *pixelgl.Window, imd *imdraw.IMDraw) {
 
 		if rect := adapt(quitButton, canvas.Bounds()); rect.Contains(mouseStart) {
 			quit = true
+		}
+
+		if btn := adapt(menuButton, canvas.Bounds()); pixel.R(btn.Min.X, btn.Min.Y-20, btn.Min.X+100, btn.Min.Y-10).Contains(mouseStart) {
+			hardMode = !hardMode
 		}
 	}
 }
@@ -72,4 +80,22 @@ func drawMenu(headerTxt string, txt []string, buttonText string, win *pixelgl.Wi
 
 	drawButton(imd, buttonText, 2, menuButton, canvas.Bounds())
 	drawButton(imd, "Quit", 2, quitButton, canvas.Bounds())
+
+	btn := adapt(menuButton, canvas.Bounds())
+	if hardMode {
+		imd.Color = colornames.Green
+		imd.Push(btn.Min.Add(pixel.V(0, -20)))
+		imd.Push(btn.Min.Add(pixel.V(10, -10)))
+		imd.Rectangle(0)
+	}
+
+	imd.Color = colornames.Grey
+	imd.Push(btn.Min.Add(pixel.V(0, -20)))
+	imd.Push(btn.Min.Add(pixel.V(10, -10)))
+	imd.Rectangle(1)
+
+	hard := text.New(btn.Min.Add(pixel.V(15, -20)), uiFont)
+	fmt.Fprintf(hard, "Hard mode (must reac 150 population to win)")
+	hard.Color = colornames.Black
+	hard.Draw(canvas, pixel.IM)
 }

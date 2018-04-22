@@ -29,6 +29,8 @@ var (
 	repairButton  = pixel.R(.55, .05, .95, .45)
 
 	landing = -1 // kind of building you want to land
+
+	popToWin = 50
 )
 
 type kindOfBuildings int
@@ -50,8 +52,6 @@ const (
 
 	labHalfSize = 50
 	labCost     = .5
-
-	popToWin = 10
 )
 
 type Building struct {
