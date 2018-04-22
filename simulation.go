@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"math"
 	"math/rand"
 
 	"github.com/faiface/pixel/text"
@@ -107,10 +108,16 @@ func (v *Villager) draw(imag *imdraw.IMDraw) {
 		v.sprite = pixel.NewSprite(nil, pixel.Rect{})
 	}
 
+	dir := 1.0
+	if v.rigidBody.velocity.X < 0 {
+		dir = -1.0
+	}
+
 	v.sprite.Set(v.sheet, v.frame)
 	v.sprite.Draw(canvas, pixel.IM.
 		Moved(v.rigidBody.body.Center()).
-		Scaled(v.rigidBody.body.Center(), 2))
+		Scaled(v.rigidBody.body.Center(), 2).
+		ScaledXY(v.rigidBody.body.Center(), pixel.V(dir, 1)))
 }
 
 func createBuilding(k kindOfBuildings, p pixel.Rect) *Building {
@@ -288,11 +295,17 @@ func (m *Map) update(dt float64, p *Player) {
 		p.food -= foodSupply
 
 		v.counter++
+
+		state := "Idle"
+		if math.Abs(v.rigidBody.velocity.X) > 150 {
+			state = "Fast"
+		}
+
 		if v.counter > 20 {
 			v.index = 1 - v.index
 			v.counter = 0
 		}
-		v.frame = v.anims["Idle"][v.index]
+		v.frame = v.anims[state][v.index]
 
 		r := v.rigidBody
 
