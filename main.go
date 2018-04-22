@@ -19,9 +19,15 @@ import (
 const (
 	defaultWidth  = 1024
 	defaultHeight = 750
+
+	menuScreen = 0
+	gameScreen = 1
+	endScreen  = 2
 )
 
 var (
+	screen = menuScreen
+
 	left   = 0
 	right  = 0
 	bottom = 0
@@ -30,6 +36,8 @@ var (
 	enter  = 0
 	tab    = 0
 	escape = 0
+
+	quit = false
 
 	rightPressed  = 0
 	pressed       = 0
@@ -47,6 +55,12 @@ var (
 	t      int
 
 	canvas *pixelgl.Canvas
+
+	player          *Player
+	m               *Map
+	ovnis           []*Ovni
+	sprite          *pixel.Sprite
+	spaceBackground pixel.Picture
 )
 
 func applyControls(win *pixelgl.Window) {
@@ -186,7 +200,55 @@ func run() {
 	last := time.Now()
 	t = 0
 
-	player := &Player{
+	canvas = pixelgl.NewCanvas(win.Bounds())
+
+	win.SetSmooth(true)
+
+	for !win.Closed() {
+		if quit || win.JustPressed(pixelgl.KeyQ) {
+			return
+		}
+
+		dt := time.Since(last).Seconds()
+		t++
+		last = time.Now()
+
+		applyControls(win)
+
+		switch screen {
+		case menuScreen:
+			menuUpdate(dt, win, imd)
+		case gameScreen:
+			gameUpdate(dt, win, imd)
+		case endScreen:
+			endUpdate(dt, win, imd)
+		}
+
+		canvas.Clear(color.RGBA{0, 0, 0, 0})
+		win.Clear(colornames.Skyblue)
+		imd.Clear()
+
+		width = win.Bounds().W()
+		height = win.Bounds().H()
+
+		canvas.SetBounds(win.Bounds())
+		switch screen {
+		case menuScreen:
+			menuRender(dt, win, imd)
+		case gameScreen:
+			gameRender(dt, win, imd)
+		case endScreen:
+			endRender(dt, win, imd)
+		}
+
+		imd.Draw(win)
+		canvas.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+		win.Update()
+	}
+}
+
+func startGame() {
+	player = &Player{
 		rigidBody: &RigidBody{
 			body:     pixel.R(200, 300, 300, 200),
 			velocity: pixel.ZV,
@@ -197,81 +259,57 @@ func run() {
 		scrap:  0.5,
 	}
 
-	spaceBackground, err := loadPicture("./assets/space-bkg.png")
+	sp, err := loadPicture("./assets/space-bkg.png")
 	if err != nil {
 		panic(err)
 	}
 
-	sprite := pixel.NewSprite(spaceBackground, spaceBackground.Bounds())
+	spaceBackground = sp
 
-	var ovnis []*Ovni
+	sprite = pixel.NewSprite(spaceBackground, spaceBackground.Bounds())
 
 	vils := []*Villager{&Villager{
 		rigidBody: NewRigidBodyBySize(defaultWidth/2+100, 100, 10, 10, pixel.ZV),
 	}}
 
-	m := &Map{
+	ovnis = []*Ovni{}
+
+	m = &Map{
 		villagers: vils,
 		buildings: nil,
 	}
+}
 
-	canvas = pixelgl.NewCanvas(win.Bounds())
-
-	win.SetSmooth(true)
-
-	for !win.Closed() {
-		if win.JustPressed(pixelgl.KeyQ) {
-			return
+func gameUpdate(dt float64, win *pixelgl.Window, imd *imdraw.IMDraw) {
+	if enter > 0 && player.energy > .01 {
+		dt /= 3
+		player.energy -= .01
+		if player.energy < 0 {
+			player.energy = 0
 		}
-
-		dt := time.Since(last).Seconds()
-		t++
-		last = time.Now()
-
-		applyControls(win)
-
-		if enter > 0 && player.energy > .01 {
-			dt /= 3
-			player.energy -= .01
-			if player.energy < 0 {
-				player.energy = 0
-			}
-		}
-
-		// update
-		ovnis = updateUniverse(dt, ovnis)
-		ovnis = player.upadte(dt, ovnis)
-		m.update(dt, player)
-
-		canvas.Clear(color.RGBA{0, 0, 0, 0})
-		win.Clear(colornames.Skyblue)
-		imd.Clear()
-
-		width = win.Bounds().W()
-		height = win.Bounds().H()
-
-		canvas.SetBounds(win.Bounds())
-
-		// TODO: clean up here
-		leftSide = pixel.R(0, 0, width/2, height)
-		rightSide = pixel.R(width/2, 0, width, height)
-		sprite.Draw(win, pixel.IM.
-			Moved(leftSide.Center()).
-			ScaledXY(leftSide.Center(), pixel.V(width/(2*spaceBackground.Bounds().W()), 1)))
-		middleBar(imd)
-
-		for _, o := range ovnis {
-			o.draw(imd)
-		}
-
-		m.draw(imd)
-		player.draw(imd)
-		imd.Draw(win)
-
-		canvas.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
-
-		win.Update()
 	}
+
+	// update
+	ovnis = updateUniverse(dt, ovnis)
+	ovnis = player.upadte(dt, ovnis)
+	m.update(dt, player)
+}
+
+func gameRender(dt float64, win *pixelgl.Window, imd *imdraw.IMDraw) {
+	// TODO: clean up here
+	leftSide = pixel.R(0, 0, width/2, height)
+	rightSide = pixel.R(width/2, 0, width, height)
+	sprite.Draw(win, pixel.IM.
+		Moved(leftSide.Center()).
+		ScaledXY(leftSide.Center(), pixel.V(width/(2*spaceBackground.Bounds().W()), 1)))
+	middleBar(imd)
+
+	for _, o := range ovnis {
+		o.draw(imd)
+	}
+
+	m.draw(imd)
+	player.draw(imd)
 }
 
 func main() {

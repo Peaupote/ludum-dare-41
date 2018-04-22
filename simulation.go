@@ -250,6 +250,7 @@ func (m *Map) update(dt float64, p *Player) {
 	}
 
 	var aliveBuildings []*Building
+	houses := 0
 	for _, b := range m.buildings {
 		if !b.creating {
 			switch b.kind {
@@ -284,10 +285,14 @@ func (m *Map) update(dt float64, p *Player) {
 		}
 
 		if b.life > 0 {
+			if b.kind == house && !b.creating {
+				houses++
+			}
 			aliveBuildings = append(aliveBuildings, b)
 		}
 	}
 	m.buildings = aliveBuildings
+	m.houseCount = houses
 
 	if p.food <= 0 {
 		p.food = 0
@@ -304,10 +309,9 @@ func (m *Map) update(dt float64, p *Player) {
 		}
 	}
 
-	if len(m.villagers) == 0 {
-		// lose
-	} else if len(m.villagers) >= 200 {
-		// win
+	if len(m.villagers) == 0 || len(m.villagers) >= 200 {
+		// end game
+		screen = endScreen
 	}
 
 	panelRect = pixel.R(width/2+width/2*.1, (height-400)/2, width/2+width/2*.9, (height-400)/2+400)
@@ -357,8 +361,8 @@ func adapt(rect1, rect2 pixel.Rect) pixel.Rect {
 		rect1.Max.Y*rect2.H()).Moved(rect2.Min)
 }
 
-func drawButton(imd *imdraw.IMDraw, txt string, btn pixel.Rect) {
-	rect := adapt(btn, panelRect)
+func drawButton(imd *imdraw.IMDraw, txt string, textScale float64, btn, ref pixel.Rect) {
+	rect := adapt(btn, ref)
 	imd.Color = colornames.Black
 	imd.Push(rect.Min)
 	imd.Push(rect.Max)
@@ -368,7 +372,7 @@ func drawButton(imd *imdraw.IMDraw, txt string, btn pixel.Rect) {
 	label.Color = color.Black
 	label.Dot.X -= label.BoundsOf(txt).W() / 2
 	fmt.Fprintf(label, txt)
-	label.Draw(canvas, pixel.IM)
+	label.Draw(canvas, pixel.IM.Scaled(label.Orig, textScale))
 }
 
 func drawPanel(imd *imdraw.IMDraw) {
@@ -379,10 +383,10 @@ func drawPanel(imd *imdraw.IMDraw) {
 	imd.Rectangle(0)
 
 	// house button
-	drawButton(imd, "Build house", houseButton)
-	drawButton(imd, "Build cantina", cantinaButton)
-	drawButton(imd, "Build lab", labButton)
-	drawButton(imd, "Repair building", repairButton)
+	drawButton(imd, "Build house", 1.1, houseButton, panelRect)
+	drawButton(imd, "Build cantina", 1.1, cantinaButton, panelRect)
+	drawButton(imd, "Build lab", 1.1, labButton, panelRect)
+	drawButton(imd, "Repair building", 1.1, repairButton, panelRect)
 }
 
 func (m *Map) draw(imag *imdraw.IMDraw) {
