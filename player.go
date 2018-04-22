@@ -27,6 +27,10 @@ const (
 	h   = 20.0
 )
 
+var (
+	shootModeSprite *pixel.Sprite
+)
+
 // Bullet is a single bullet the player can shoot
 type Bullet struct {
 	rigidBody *RigidBody
@@ -256,6 +260,22 @@ func (p *Player) draw(imag *imdraw.IMDraw) {
 		imag.Color = colornames.Darkgray
 		s.rigidBody.draw(imag)
 	}
+
+	center := pixel.V(width/2-64, height-32)
+	shootModeSprite.Draw(canvas, pixel.IM.
+		Moved(center).Scaled(center, 2))
+	var selectedMode pixel.Rect
+	switch p.mode {
+	case shootBullets:
+		selectedMode = pixel.R(center.X-64, center.Y-32, center.X, center.Y+32)
+	case shootLaser:
+		selectedMode = pixel.R(center.X, center.Y-32, center.X+64, center.Y+32)
+	}
+
+	imag.Color = colornames.Chartreuse
+	imag.Push(selectedMode.Min)
+	imag.Push(selectedMode.Max)
+	imag.Rectangle(1)
 
 	// Simulation
 	dx := width * 0.1

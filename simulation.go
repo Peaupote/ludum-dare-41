@@ -228,8 +228,11 @@ func (m *Map) clearSelected() {
 
 func (m *Map) update(dt float64, p *Player) {
 	if rightPressed > 0 || escape > 0 {
+		focused = false
 		landing = -1
 		m.clearSelected()
+		mousePosition = pixel.ZV
+		mouseStart = pixel.ZV
 	}
 
 	switch landing {
@@ -505,6 +508,13 @@ func drawPanel(imd *imdraw.IMDraw) {
 	drawButton(imd, "Build cantina", 1.1, cantinaButton, panelRect)
 	drawButton(imd, "Build lab", 1.1, labButton, panelRect)
 	drawButton(imd, "Repair building", 1.1, repairButton, panelRect)
+
+	txt := fmt.Sprintf("press ESC to close this panel")
+	label := text.New(panelRect.Center().Add(pixel.V(0, 5-panelRect.H()/2)), uiFont)
+	label.Color = color.Black
+	label.Dot.X -= label.BoundsOf(txt).W() / 2
+	fmt.Fprintf(label, txt)
+	label.Draw(topCanvas, pixel.IM)
 }
 
 func (m *Map) draw(imag *imdraw.IMDraw) {

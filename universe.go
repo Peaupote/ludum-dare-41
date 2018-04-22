@@ -53,7 +53,7 @@ func updateUniverse(dt float64, ovnis []*Ovni) []*Ovni {
 
 	ovnis = os
 
-	if genCounter%1000 == 0 {
+	if genCounter%500 == 0 {
 		genMode = (genMode + 1) % 3
 		genCounter = 0
 	}

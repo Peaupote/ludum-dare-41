@@ -348,6 +348,12 @@ func startGame() {
 
 	sprite = pixel.NewSprite(spaceBackground, spaceBackground.Bounds())
 
+	icons, err := loadPicture("./assets/shootMode.png")
+	if err != nil {
+		panic(err)
+	}
+	shootModeSprite = pixel.NewSprite(icons, icons.Bounds())
+
 	vils := []*Villager{NewVillager(defaultWidth/2+100, 100)}
 	bils := []*Building{
 		createBuilding(cantina, pixel.R(642, 69, 722, 149)),
