@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"math/rand"
+
+	"github.com/faiface/pixel/text"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
@@ -354,12 +357,18 @@ func adapt(rect1, rect2 pixel.Rect) pixel.Rect {
 		rect1.Max.Y*rect2.H()).Moved(rect2.Min)
 }
 
-func drawButton(imd *imdraw.IMDraw, btn pixel.Rect) {
+func drawButton(imd *imdraw.IMDraw, txt string, btn pixel.Rect) {
 	rect := adapt(btn, panelRect)
 	imd.Color = colornames.Black
 	imd.Push(rect.Min)
 	imd.Push(rect.Max)
 	imd.Rectangle(1)
+
+	label := text.New(rect.Center(), uiFont)
+	label.Color = color.Black
+	label.Dot.X -= label.BoundsOf(txt).W() / 2
+	fmt.Fprintf(label, txt)
+	label.Draw(canvas, pixel.IM)
 }
 
 func drawPanel(imd *imdraw.IMDraw) {
@@ -370,10 +379,10 @@ func drawPanel(imd *imdraw.IMDraw) {
 	imd.Rectangle(0)
 
 	// house button
-	drawButton(imd, houseButton)
-	drawButton(imd, cantinaButton)
-	drawButton(imd, labButton)
-	drawButton(imd, repairButton)
+	drawButton(imd, "Build house", houseButton)
+	drawButton(imd, "Build cantina", cantinaButton)
+	drawButton(imd, "Build lab", labButton)
+	drawButton(imd, "Repair building", repairButton)
 }
 
 func (m *Map) draw(imag *imdraw.IMDraw) {
@@ -405,6 +414,12 @@ func (m *Map) draw(imag *imdraw.IMDraw) {
 		imag.Push(mouseLocation)
 		imag.Circle(cantinaRad, 0)
 	}
+
+	txt := fmt.Sprintf("Population: %d/%d", len(m.villagers), m.houseCount*5)
+	label := text.New(pixel.V(width/2+20, height-4*gap-4*h), uiFont)
+	label.Color = color.Black
+	fmt.Fprintf(label, txt)
+	label.Draw(canvas, pixel.IM)
 
 	m.drawSelectionZone(imag)
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"image/color"
 	_ "image/png"
 
 	"github.com/faiface/pixel"
@@ -44,6 +45,8 @@ var (
 	width  float64
 	height float64
 	t      int
+
+	canvas *pixelgl.Canvas
 )
 
 func applyControls(win *pixelgl.Window) {
@@ -212,6 +215,8 @@ func run() {
 		buildings: nil,
 	}
 
+	canvas = pixelgl.NewCanvas(win.Bounds())
+
 	win.SetSmooth(true)
 
 	for !win.Closed() {
@@ -238,11 +243,14 @@ func run() {
 		ovnis = player.upadte(dt, ovnis)
 		m.update(dt, player)
 
+		canvas.Clear(color.RGBA{0, 0, 0, 0})
 		win.Clear(colornames.Skyblue)
 		imd.Clear()
 
 		width = win.Bounds().W()
 		height = win.Bounds().H()
+
+		canvas.SetBounds(win.Bounds())
 
 		// TODO: clean up here
 		leftSide = pixel.R(0, 0, width/2, height)
@@ -259,6 +267,8 @@ func run() {
 		m.draw(imd)
 		player.draw(imd)
 		imd.Draw(win)
+
+		canvas.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
 
 		win.Update()
 	}

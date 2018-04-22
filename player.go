@@ -65,7 +65,7 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 	}
 
 	if space > 0 {
-		if p.mode == shootLaser && p.energy-laserCost > 0 {
+		if p.mode == shootLaser && space < 10 && p.energy-laserCost > 0 {
 			p.energy -= laserCost
 			p.hasShootLaser = true
 			x := (p.rigidBody.body.Min.X + p.rigidBody.body.Max.X) / 2
