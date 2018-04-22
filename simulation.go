@@ -174,6 +174,13 @@ func (b *Building) draw(imd *imdraw.IMDraw) {
 		imd.Circle(cantinaRad, 0)
 	}
 
+	txt := fmt.Sprintf("Life: %d/100", int(b.life))
+	label := text.New(pixel.V(b.position.Center().X, b.position.Min.Y-10), uiFont)
+	label.Dot.X -= label.BoundsOf(txt).W() / 2
+	label.Color = color.Black
+	fmt.Fprintf(label, txt)
+	label.Draw(canvas, pixel.IM)
+
 }
 
 func getSelected(villagers []*Villager) []*Villager {

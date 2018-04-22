@@ -21,6 +21,8 @@ const (
 	laserCost  = .2
 	bulletCost = .05
 
+	maxSpeed = 5
+
 	gap = 15.0
 	h   = 20.0
 )
@@ -212,6 +214,10 @@ func (p *Player) upadte(dt float64, ovnis []*Ovni) []*Ovni {
 	if r.body.Min.Y < 0 {
 		r.body = r.body.Moved(pixel.V(0, -r.body.Min.Y))
 		r.velocity.Y = 0
+	}
+
+	if r.velocity.Len() > maxSpeed {
+		r.velocity.Scaled(maxSpeed / r.velocity.Len())
 	}
 
 	// Simulation
