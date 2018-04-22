@@ -292,7 +292,7 @@ func (m *Map) update(dt float64, p *Player) {
 		if t%200 == 0 {
 			var survivingVillager []*Villager
 			for i, v := range m.villagers {
-				if i == rand.Intn(len(m.villagers)) {
+				if i+1 == rand.Intn(len(m.villagers)) {
 					survivingVillager = append(survivingVillager, v)
 				}
 			}
