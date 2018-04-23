@@ -1,58 +1,34 @@
-Ludum Dare 41
-=============
+Ludum Dare 41 - Space Cruise
+============================
 
 Theme: Combine 2 Incompatible Genres
 ------------------------------------
 
-Win condition:
+Installation
+------------
 
-* Build a top-tier building.
+```
+$ make install
 
-Lose condition:
+Or
 
-* The spaceship die.
+$ go get github.com/Peaupote/ludum-dare-41
+```
 
-Controls
---------
+You can also clone the repo but worry about the `$GOPATH` then
 
-To differentiate the 2 games let's say that the shoot them up requires only keyboard controls and the body simulation only mouse controls.
+How to play
+-----------
 
-The shoot them up
------------------
+```
+$ make run
 
-On the left side of the screen you control the spaceship travelling throught intergallatic space.
+Or 
 
-You must avoid
+$ go run menu.go physics.go simulation.go universe.go player.go main.go
 
-* damages from meteorites.
-* blakholes and suns.
-* pirates attacks.
+Or 
 
-You have 2 types of shooting
-
-* big laser: single direction, verypowerful, expensive in energy
-* turrets: fire lots of bullets in spiral but not very powerful
-
-Life inside the ship
---------------------
-
-This is a classic real-time simulation game.
-
-Ressources:
-
-* energy (shared with the spaceship)
-* food
-* mechanical components (you can build those or the ship can find some in the space)
-
-Technological tree:
-
-* Tiers 0:
-  * House: needed to extends the supply limit and produce more workers.
-  * Cantina: peoples go there to produce food
-* Tiers 1:
-  * Lab increase energy production
-
-If the ship
-
-* lose to much life at once it randomly damage buildings
-* go to fast, peoples in the ship fall and slip: they randomly dies
+$ go -o SpaceCruise build menu.go physics.go simulation.go universe.go player.go main.go
+$ ./SpaceCruise
+```
