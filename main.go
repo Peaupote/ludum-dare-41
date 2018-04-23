@@ -338,7 +338,7 @@ func startGame() {
 		mode:   shootLaser,
 		energy: 1,
 		food:   1,
-		scrap:  1,
+		scrap:  .5,
 
 		sheet: sheet,
 		anims: anims,

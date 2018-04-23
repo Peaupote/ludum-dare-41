@@ -14,14 +14,41 @@ import (
 var (
 	title     = "{insert title here}"
 	menuLines = []string{
-		"Move the dxcfvgbhjklmù",
-		"rfghjklkhgfdxgkolpmgtfdrtgyuio",
-		"cfvghjklmlkjhgfdghjkl",
-		"ghjkl",
+		"Hi ! You are the commander",
+		"of a spaceship travelling",
+		"through intergallactic",
+		"spaces. You must control",
+		"the ship but also manage",
+		"workers' lives in the ship.",
+		"Build houses to raise more",
+		"workers, cantina to provide",
+		"them food and lab to increase",
+		"your energy production",
+		"",
+		"Good luck !",
 	}
+
 	loseLines = []string{
-		"You are a loser",
-		"fdkhfdjkhf %s might be cool to insert text here",
+		"To bad...",
+		"All your crew is dead",
+		"It's the end of the adventure",
+	}
+
+	winLines = []string{
+		"Well done !",
+		"You're the best commander",
+		"i've ever met",
+	}
+
+	controlLines = []string{
+		"Arrows - Move",
+		"Space  - Shoot",
+		"Tab    - Switch weapon",
+		"Enter  - Bullet time",
+		"",
+		"You can select workers",
+		"by drawing a square",
+		"including them with your mouse",
 	}
 
 	menuButton = pixel.R(0.25, 0.1, .45, .2)
@@ -61,7 +88,12 @@ func endRender(dt float64, win *pixelgl.Window, imd *imdraw.IMDraw) {
 		endHeader = "Whoa you made it !"
 	}
 
-	drawMenu(endHeader, loseLines, "Play again", win, imd)
+	lines := loseLines
+	if len(m.villagers) >= popToWin {
+		lines = winLines
+	}
+
+	drawMenu(endHeader, lines, "Play again", win, imd)
 }
 
 func drawMenu(headerTxt string, txt []string, buttonText string, win *pixelgl.Window, imd *imdraw.IMDraw) {
@@ -70,12 +102,20 @@ func drawMenu(headerTxt string, txt []string, buttonText string, win *pixelgl.Wi
 	fmt.Fprintf(header, headerTxt)
 	header.Draw(canvas, pixel.IM.Scaled(header.Orig, 5))
 
-	label := text.New(canvas.Bounds().Center(), uiFont)
-	for _, line := range txt {
-		label.Dot.X -= label.BoundsOf(line).W() / 2
+	label := text.New(pixel.V(width*.05, height*.65), uiFont)
+	fmt.Fprintf(label, "Controls")
+	label.Draw(canvas, pixel.IM.Scaled(label.Orig, 3))
+
+	label = text.New(pixel.V(width*.05, height*.6), uiFont)
+	for _, line := range controlLines {
 		fmt.Fprintln(label, line)
 	}
+	label.Draw(canvas, pixel.IM.Scaled(label.Orig, 2))
 
+	label = text.New(pixel.V(width*.55, height*.65), uiFont)
+	for _, line := range txt {
+		fmt.Fprintln(label, line)
+	}
 	label.Draw(canvas, pixel.IM.Scaled(label.Orig, 2))
 
 	drawButton(imd, buttonText, 2, menuButton, canvas.Bounds())
