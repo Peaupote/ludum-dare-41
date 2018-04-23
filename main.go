@@ -251,7 +251,7 @@ func loadPicture(path string) (pixel.Picture, error) {
 
 func run() {
 	cfg := pixelgl.WindowConfig{
-		Title:  "Ludum dare 41 - {enter the name here}",
+		Title:  "Ludum dare 41 - Space Cruise",
 		Bounds: pixel.R(0, 0, defaultWidth, defaultHeight),
 		VSync:  true,
 	}

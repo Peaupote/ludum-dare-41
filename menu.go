@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	title     = "{insert title here}"
+	title     = "Space Cruise"
 	menuLines = []string{
 		"Hi ! You are the commander",
 		"of a spaceship travelling",
